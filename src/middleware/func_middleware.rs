@@ -7,32 +7,39 @@ use std::task::{
     Poll
 };
 use std::pin::Pin;
+use std::rc::Rc;
+use std::cell::{RefCell, RefMut};
 
 #[derive(Clone)]
 pub struct FuncMiddleware<S, F> {
-    func: fn(service: &mut S, req: ServiceRequest) -> F,
+    func: fn(req: ServiceRequest, service: Rc<RefCell<S>>) -> F,
 }
 
 impl<S, B, F> FuncMiddleware<S, F>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error> + 'static,
     S::Future: 'static,
     B: MessageBody,
     F: Future<Output = Result<ServiceResponse<B>, actix_web::Error>>
 {
-    pub fn from_func(func:fn(service: &mut S, req: ServiceRequest) -> F) -> Self{
+    pub fn from_func(func: fn(req: ServiceRequest, service: Rc<RefCell<S>>) -> F) -> Self{
         Self {
             func: func
+        }
+    }
+    pub fn from_closure(func: impl FnMut(ServiceRequest, Rc<RefCell<S>>) -> F) -> Self {
+        Self {
+            func: func,
         }
     }
 }
 
 impl<S, B, F> Transform<S> for FuncMiddleware<S, F>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error> + 'static,
     S::Future: 'static,
     B: MessageBody,
-    F: Future<Output = Result<ServiceResponse<B>, actix_web::Error>>
+    F: Future<Output = Result<ServiceResponse<B>, actix_web::Error>> + 'static
 {
     type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
@@ -43,33 +50,36 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ok(FuncMiddlewareFuture {
             func: self.func,
-            service: service,
+            service: Rc::new(RefCell::new(service)),
         })
     }
 }
 
 pub struct FuncMiddlewareFuture<S, F> {
-    func: fn(service: &mut S, req: ServiceRequest) -> F,
-    service: S,
+    func: fn(req: ServiceRequest, service: Rc<RefCell<S>>) -> F,
+    service: Rc<RefCell<S>>,
 }
 
 impl<S, B, F> Service for FuncMiddlewareFuture<S, F>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error> + 'static,
     S::Future: 'static,
     B: MessageBody, 
-    F: Future<Output = Result<ServiceResponse<B>, actix_web::Error>>
+    F: Future<Output = Result<ServiceResponse<B>, actix_web::Error>> + 'static
 {
     type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = actix_web::Error;
-    type Future = Pin<Box<F>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
     fn poll_ready(&mut self, ctx: &mut task::Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(ctx)
     }
     fn call(&mut self, req: Self::Request) -> Self::Future {
+        let service = self.service.clone();
         let func = self.func;
-        let future = func(&mut self.service, req);
-        Box::pin(future)
+        Box::pin(async move {
+            let result = func(req, service).await?;
+            Ok(result)
+        })
     }
 }

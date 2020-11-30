@@ -1,4 +1,6 @@
 use actix_web::{ web, get, HttpRequest, HttpResponse, Result};
+use crate::middleware;
+use crate::model::Access;
 
 #[get("/grant")]
 pub async fn grant() -> Result<HttpResponse> {

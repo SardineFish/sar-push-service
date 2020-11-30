@@ -15,7 +15,7 @@ use tokio::stream::StreamExt;
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum Access {
     Root,
-    Amin,
+    Admin,
     User,
 }
 
@@ -31,6 +31,7 @@ pub struct Profile {
 pub const KEY_ID: &str = "id";
 pub const KEY_SERVICES: &str = "services";
 pub const KEY_ACCESS: &str = "access";
+pub const KEY_SECRET: &str = "secret";
 
 #[derive(Serialize, Deserialize)]
 pub enum Service {
@@ -75,6 +76,18 @@ impl Model {
 
         let result = collection.insert_one(doc, None).await.map_err(mongo_error)?;
         Ok(result.inserted_id.as_object_id().unwrap().clone())
+    }
+
+    pub async fn get_secret(&self, id: String) -> Result<String, Error> {
+        let coll = self.db.collection(COLLECTION_PROFILE);
+        let query = id_query!(id);
+        let result = coll.find_one(query, None)
+            .await.map_err(mongo_error)?
+            .ok_or(Error::NoRecord)?
+            .get_str(KEY_SECRET)
+            .map_err(|_| Error::NoRecord)?
+            .to_string();
+        Ok(result)
     }
 
     pub async fn set_access(&self, id: String, access: Access) -> Result<(), Error> {

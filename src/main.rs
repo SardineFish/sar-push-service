@@ -1,5 +1,6 @@
 extern crate actix_web;
 extern crate futures_util;
+extern crate futures;
 
 mod model;
 mod controller;

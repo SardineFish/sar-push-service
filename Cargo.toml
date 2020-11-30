@@ -12,3 +12,4 @@ mongodb = "1.1.1"
 serde = "1.0.117"
 tokio = { version = "0.3.4", features = ["stream"] }
 futures-util = "0.3.8"
+futures = "0.3.8"
