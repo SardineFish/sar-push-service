@@ -1,7 +1,11 @@
 extern crate mongodb;
 extern crate tokio;
 
-mod access;
+mod profile;
+mod error;
+mod notify;
+mod init;
+mod service;
 
 use mongodb::{ Client, options::ClientOptions };
 
