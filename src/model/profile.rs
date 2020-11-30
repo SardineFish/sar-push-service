@@ -12,7 +12,7 @@ use serde::{Serialize, Deserialize};
 use tokio::stream::StreamExt;
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum Access {
     Root,
     Amin,

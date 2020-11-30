@@ -1,4 +1,4 @@
-use actix_web::{get, HttpRequest, HttpResponse, Result};
+use actix_web::{ web, get, HttpRequest, HttpResponse, Result};
 
 #[get("/grant")]
 pub async fn grant() -> Result<HttpResponse> {
@@ -6,5 +6,6 @@ pub async fn grant() -> Result<HttpResponse> {
 }
 
 pub fn config(cfg: &mut actix_web::web::ServiceConfig){
-    cfg.service(grant);
+    cfg
+        .service(grant);
 }

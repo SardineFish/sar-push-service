@@ -25,3 +25,6 @@ impl Model {
         })
     }
 }
+
+pub use profile::{ Profile, Access, Service, ServiceRecord, };
+pub use error::{ Error };

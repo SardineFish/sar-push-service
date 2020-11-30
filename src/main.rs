@@ -1,7 +1,9 @@
 extern crate actix_web;
+extern crate futures_util;
 
 mod model;
 mod controller;
+mod middleware;
 
 use actix_web::{ HttpServer, App, web, get, HttpRequest, HttpResponse, Result };
 
