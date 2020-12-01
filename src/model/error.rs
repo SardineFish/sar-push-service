@@ -1,5 +1,6 @@
 use mongodb::bson;
 
+#[derive(Debug)]
 pub enum Error {
     MongoError(mongodb::error::Error),
     BsonDeserializeError(bson::de::Error),

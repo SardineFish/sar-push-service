@@ -78,6 +78,15 @@ impl Model {
         Ok(result.inserted_id.as_object_id().unwrap().clone())
     }
 
+    pub async fn get_profile(&self, id: String) -> Result<Profile, Error> {
+        let coll =  self.db.collection(COLLECTION_PROFILE);
+        let query = id_query!(id);
+        let doc = coll.find_one(query, None)
+            .await.map_err(mongo_error)?
+            .ok_or(Error::NoRecord)?;
+        Ok(bson::from_document(doc).map_err(bson_de_error)?)
+    }
+
     pub async fn get_secret(&self, id: String) -> Result<String, Error> {
         let coll = self.db.collection(COLLECTION_PROFILE);
         let query = id_query!(id);

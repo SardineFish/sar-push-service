@@ -4,7 +4,10 @@
 		{
 			"type": "shell",
 			"command": "cargo",
-			"args": ["+nightly", "build"],
+			"args": [
+				"+nightly",
+				"build"
+			],
 			"problemMatcher": [
 				"$rustc"
 			],
@@ -13,6 +16,16 @@
 				"kind": "build",
 				"isDefault": true
 			}
+		},
+		{
+			"type": "shell",
+			"command": "mongod",
+			"args": [
+				"--dbpath",
+				"${workspaceFolder}/test-data/db"
+			],
+			"label": "Start MongoDB",
+			"problemMatcher": []
 		}
 	]
 }
