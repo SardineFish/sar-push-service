@@ -1,6 +1,6 @@
 use std::iter::FilterMap;
 
-use super::Model;
+use super::{Model, notify::NotifyProfile};
 use super::error::*;
 
 use mongodb::{
@@ -28,7 +28,7 @@ pub struct Profile {
     pub services: Vec<ServiceRecord>,
 }
 
-pub const KEY_ID: &str = "id";
+pub const KEY_ID: &str = "uid";
 pub const KEY_SERVICES: &str = "services";
 pub const KEY_ACCESS: &str = "access";
 pub const KEY_SECRET: &str = "secret";
@@ -36,12 +36,27 @@ pub const KEY_SECRET: &str = "secret";
 #[derive(Serialize, Deserialize)]
 pub enum Service {
     EmailNotify(super::notify::NotifyProfile),
+    UserManagement(super::notify::AccessGrant),
+    ModifyProfile(super::notify::ModifyProfile),
+}
+
+pub trait ExtractProfile<T> {
+    fn extract_from(service: &Service) -> Option<&Self>;
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct ServiceRecord {
     pub _id: ObjectId,
     pub profile: Service,
+}
+
+impl ServiceRecord {
+    pub fn new(service: Service) -> Self {
+        Self {
+            _id: ObjectId::new(),
+            profile: service,
+        }
+    }
 }
 
 pub const COLLECTION_PROFILE: &str = "profile";

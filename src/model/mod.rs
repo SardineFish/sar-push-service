@@ -33,5 +33,6 @@ impl Model {
     }
 }
 
-pub use profile::{ Profile, Access, Service, ServiceRecord, };
+pub use profile::{ Profile, Access, Service, ServiceRecord, ExtractProfile };
 pub use error::{ Error };
+pub use notify::NotifyProfile;

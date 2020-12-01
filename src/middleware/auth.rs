@@ -57,7 +57,8 @@ where
     S::Future: 'static,
     B: MessageBody
 {
-    match get_profile(&request).await {
+    let profile = get_profile(&request).await;
+    match profile {
         Ok(profile) => {
             let (req, payload) = request.into_parts();
             req.extensions_mut().insert(profile);
