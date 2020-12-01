@@ -1,3 +1,5 @@
+#![feature(trait_alias)]
+
 extern crate actix_web;
 extern crate futures_util;
 extern crate futures;

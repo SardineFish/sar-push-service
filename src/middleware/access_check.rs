@@ -9,6 +9,7 @@ use futures::{
 use futures_util::FutureExt;
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
+use super::{func_middleware::*};
 
 #[derive(Deserialize)]
 struct AccessQuery {
@@ -31,10 +32,9 @@ impl fmt::Display for Error {
     }
 }
 
-
 pub async fn access_chk<S, B>(request: ServiceRequest, mut service: Rc<RefCell<S>>) -> Result<ServiceResponse<B>, actix_web::Error>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error> + 'static,
+    S: ServiceT<B> + 'static,
     S::Future: 'static,
     B: MessageBody
 {
@@ -42,23 +42,32 @@ where
     Ok(response)
 }
 
+async_middleware!(pub access_check_async, access_chk);
 
-pub fn access_check<S, B>(at_least: Access) 
-    -> fn(req: ServiceRequest, srv: Rc<RefCell<S>>) 
-        -> Pin<Box<Future<Output = Result<ServiceResponse<B>, actix_web::Error>>>>
+
+pub fn access_check_factory<S, B>(at_least: Access) -> AsyncFactoryRtn<S, B>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error> + 'static,
+    S: ServiceT<B> + 'static,
     S::Future: 'static,
     B: MessageBody
 {
-    let f: fn(req: ServiceRequest, srv: Rc<RefCell<S>>) 
-        -> Pin<Box<Future<Output = Result<ServiceResponse<B>, actix_web::Error>>>> 
+    let f: AsyncFactoryRtn<S, B>
         = |request, service| {
             Box::pin(async move {
-                    let response = { service.borrow_mut().call(request)};
-                    let response = response.await?;
-                    Ok(response)
-                })
+
+                let response = { service.borrow_mut().call(request)};
+                let response = response.await?;
+                Ok(response)
+            })
         };
     f
+}
+
+pub fn access_check<S, B>(at_least: Access) -> super::FuncMiddleware<S, AsyncMiddlewareRtn<B>>
+where
+    S: ServiceT<B> + 'static,
+    S::Future: 'static,
+    B: MessageBody
+{
+    super::FuncMiddleware::from_func(access_check_factory(at_least))
 }
