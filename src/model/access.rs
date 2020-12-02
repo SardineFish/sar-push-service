@@ -155,7 +155,7 @@ impl Model {
         };
         let result = coll.update_one(query, update, None)
             .await.map_err(mongo_error)?;
-        if result.modified_count <= 0 {
+        if result.matched_count <= 0 {
             Err(Error::NoRecord)
         } else {
             Ok(profile)

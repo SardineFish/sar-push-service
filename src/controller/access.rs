@@ -103,7 +103,7 @@ async fn get_profile(
     let profile = model.get_profile(&uid).await.map_err(handle_model_err)?;
 
     let is_self = user.uid == uid;
-    let access_permit = service.access >= Access::Admin && service.access < profile.access;
+    let access_permit = service.access >= Access::Admin && service.access > profile.access;
     if !is_self && !access_permit {
         return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
     }
@@ -124,7 +124,7 @@ async fn update_profile(
 
     let mut profile = model.get_profile(&uid).await.map_err(handle_model_err)?;
 
-    if auth.uid != profile.uid && service.access < profile.access {
+    if auth.uid != profile.uid && service.access <= profile.access {
         return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
     }
 
@@ -200,5 +200,9 @@ async fn delete_user(
 }
 
 pub fn config(cfg: &mut actix_web::web::ServiceConfig) {
-    cfg.service(add_user);
+    cfg.service(add_user)
+        .service(get_profile)
+        .service(update_profile)
+        .service(revoke_secret)
+        .service(delete_user);
 }
