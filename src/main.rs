@@ -6,6 +6,7 @@ extern crate futures;
 extern crate futures_util;
 extern crate log;
 extern crate clap;
+extern crate actix_web_httpauth;
 
 mod controller;
 mod middleware;
@@ -38,8 +39,8 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .data(model.clone())
-            .wrap(Logger::default())
             .wrap(middleware::authentication())
+            .wrap(Logger::default())
             .configure(controller::config)
     })
     .bind("0.0.0.0:5000")?

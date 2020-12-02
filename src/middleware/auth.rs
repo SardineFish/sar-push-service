@@ -11,6 +11,10 @@ use futures_util::FutureExt;
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 use super::{func_middleware::*};
+use actix_web_httpauth::extractors::{
+    AuthExtractor,
+    basic::BasicAuth,
+};
 
 #[derive(Deserialize)]
 struct AccessQuery {
@@ -44,11 +48,17 @@ fn map_error(err: ModelError) -> actix_web::Error {
 
 async fn get_profile(request: &ServiceRequest) -> Result<model::Profile, actix_web::Error> {
     let model = request.app_data::<web::Data<Model>>().unwrap();
-    let mut query = web::Query::<AccessQuery>::from_query(request.query_string())?;
-    let id = core::mem::replace(&mut query.id, String::new());
+    let auth = BasicAuth::from_service_request(&request).await?;
+    let id = auth.user_id().to_string();
+    let password = auth.password()
+        .ok_or(web_errors::ErrorUnauthorized("Unauthorized"))?;
     let profile = model.get_profile(id)
         .await.map_err(map_error)?;
-    Ok(profile)
+    if &profile.secret != password {
+        Err(web_errors::ErrorUnauthorized("Unauthorized"))
+    } else {
+        Ok(profile)
+    }
 }
 
 pub async fn access_chk<S, B>(request: ServiceRequest, mut service: Rc<RefCell<S>>) -> Result<ServiceResponse<B>, actix_web::Error>
