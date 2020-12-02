@@ -1,7 +1,7 @@
 extern crate mongodb;
 extern crate tokio;
 
-mod profile;
+mod access;
 mod error;
 mod notify;
 mod init;
@@ -33,6 +33,7 @@ impl Model {
     }
 }
 
-pub use profile::{ Profile, Access, Service, ServiceRecord, ExtractProfile };
+pub use access::{ UserProfile, Access, Service, ServiceRecord, ExtractProfile, AccessManagerProfile };
 pub use error::{ Error };
 pub use notify::NotifyProfile;
+pub use service::{ ServiceManagerProfile };

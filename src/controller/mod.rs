@@ -1,19 +1,20 @@
 mod access;
 mod notify;
 
-use crate::model;
 use crate::middleware;
+use crate::model;
 use actix_web::web;
-use middleware::FuncMiddleware;
+use middleware::{FuncMiddleware, ServiceGuard};
 
-use actix_web::{
-    dev::ServiceRequest,dev::Service
-};
-use model::Access;
+use actix_web::{dev::Service, dev::ServiceRequest};
+use model::{Access, NotifyProfile};
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(web::scope("/access")
-            .configure(access::config))
-        .service(web::scope("/notify").configure(notify::config))
-        .data(model::Model::new());
+    cfg.service(
+        web::scope("/access")
+            .guard(ServiceGuard::<NotifyProfile>::new())
+            .configure(access::config),
+    )
+    .service(web::scope("/notify").configure(notify::config))
+    .data(model::Model::new());
 }

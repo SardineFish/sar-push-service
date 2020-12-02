@@ -3,7 +3,7 @@ use std::vec;
 use super::{
     Model,
     error::*,
-    profile::*
+    access::*
 };
 
 use mongodb::{
@@ -14,6 +14,21 @@ use mongodb::{
     }
 };
 use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ServiceManagerProfile {
+    pub access: Access,
+}
+
+
+impl ExtractProfile<ServiceManagerProfile> for ServiceManagerProfile {
+    fn extract_from(service: &Service) -> Option<&Self> {
+        match service {
+            Service::ServiceManagement(profile) => Some(profile),
+            _ => None
+        }
+    }
+}
 
 macro_rules! id_query {
     ($id: expr) => (doc! { KEY_ID: $id })

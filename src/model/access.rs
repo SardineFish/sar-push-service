@@ -1,6 +1,4 @@
-use std::iter::FilterMap;
-
-use super::{Model, notify::NotifyProfile};
+use super::{Model};
 use super::error::*;
 
 use mongodb::{
@@ -20,7 +18,7 @@ pub enum Access {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Profile {
+pub struct UserProfile {
     pub uid: String,
     pub description: String,
     pub secret: String,
@@ -35,9 +33,9 @@ pub const KEY_SECRET: &str = "secret";
 
 #[derive(Serialize, Deserialize)]
 pub enum Service {
+    UserAccessControl(AccessManagerProfile),
     EmailNotify(super::notify::NotifyProfile),
-    UserManagement(super::notify::AccessGrant),
-    ModifyProfile(super::notify::ModifyProfile),
+    ServiceManagement(super::service::ServiceManagerProfile),
 }
 
 pub trait ExtractProfile<T> {
@@ -59,6 +57,20 @@ impl ServiceRecord {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct AccessManagerProfile {
+    pub access: Access,
+}
+
+impl ExtractProfile<AccessManagerProfile> for AccessManagerProfile {
+    fn extract_from(service: &Service) -> Option<&Self> {
+        match service {
+            Service::UserAccessControl(profile) => Some(profile),
+            _ => None,
+        }
+    }
+}
+
 pub const COLLECTION_PROFILE: &str = "profile";
 
 macro_rules! id_query {
@@ -66,13 +78,13 @@ macro_rules! id_query {
 }
 
 impl Model {
-    pub async fn get_all_profile(&self) -> Result<Vec<Profile>, Error> {
+    pub async fn get_all_profile(&self) -> Result<Vec<UserProfile>, Error> {
         let collection = self.db.collection(COLLECTION_PROFILE);
         let cursor = collection.find(doc! {}, None).await.map_err(mongo_error)?;
 
-        let user_list: Vec<Profile> = cursor.filter_map(|result| {
+        let user_list: Vec<UserProfile> = cursor.filter_map(|result| {
             if let Ok(doc) = result {
-                if let Ok(profile) = bson::from_document::<Profile>(doc) {
+                if let Ok(profile) = bson::from_document::<UserProfile>(doc) {
                     Some(profile)
                 } else {
                     None
@@ -85,7 +97,7 @@ impl Model {
         Ok(user_list)
     }
 
-    pub async fn add_profile(&self, profile: Profile) -> Result<ObjectId, Error> {
+    pub async fn add_profile(&self, profile: UserProfile) -> Result<ObjectId, Error> {
         let collection = self.db.collection(COLLECTION_PROFILE);
         let doc = bson::to_document(&profile).unwrap();
 
@@ -93,7 +105,7 @@ impl Model {
         Ok(result.inserted_id.as_object_id().unwrap().clone())
     }
 
-    pub async fn get_profile(&self, id: String) -> Result<Profile, Error> {
+    pub async fn get_profile(&self, id: String) -> Result<UserProfile, Error> {
         let coll =  self.db.collection(COLLECTION_PROFILE);
         let query = id_query!(id);
         let doc = coll.find_one(query, None)

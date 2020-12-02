@@ -13,7 +13,7 @@ The *Email Notify Service* handles the notification push by sending email.
 }
 ```
 
-Only the user having a service profile of the *Email Notify Service* have permission to request these API. Request without permission will always get error response with status code `403`.
+Only the user with an *Email Notify Service* profile can be accessible to request these API, otherwise will result in a `403` response with error message.
 
 ## Send a email notification.
 `POST /notify/queue`
@@ -26,3 +26,5 @@ Only the user having a service profile of the *Email Notify Service* have permis
     "body": "<EMail body of the notification>"
 }
 ```
+
+

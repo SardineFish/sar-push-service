@@ -1,5 +1,5 @@
 use actix_web::{web, HttpResponse, error as web_errors, dev::{MessageBody, Service, ServiceRequest, ServiceResponse}};
-use model::Profile;
+use model::UserProfile;
 use crate::{model::{self, Access, Model, Error as ModelError}};
 use std::pin::Pin;
 use std::fmt;
@@ -46,7 +46,7 @@ fn map_error(err: ModelError) -> actix_web::Error {
     }
 }
 
-async fn get_profile(request: &ServiceRequest) -> Result<model::Profile, actix_web::Error> {
+async fn get_profile(request: &ServiceRequest) -> Result<model::UserProfile, actix_web::Error> {
     let model = request.app_data::<web::Data<Model>>().unwrap();
     let auth = BasicAuth::from_service_request(&request).await?;
     let id = auth.user_id().to_string();
