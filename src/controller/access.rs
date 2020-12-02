@@ -5,10 +5,9 @@ use std::mem::{replace, swap};
 
 use crate::model::{Access, Error as ModelError};
 use crate::{
-    middleware,
     model::{self, AccessManagerProfile},
 };
-use actix_web::{dev::Extensions, HttpRequest, HttpResponse, Responder, Result, delete, error as web_errors, get, http::StatusCode, patch, post, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, Result, delete, error as web_errors, get, http::StatusCode, patch, post, web};
 use model::UserProfile;
 use serde::{Deserialize, Serialize};
 use web::{Data, Json, Path};
