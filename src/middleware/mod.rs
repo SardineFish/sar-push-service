@@ -6,4 +6,4 @@ mod service_guard;
 
 pub use auth::authentication;
 pub use func_middleware::{FuncMiddleware, ServiceT, AsyncFactoryRtn, AsyncMiddlewareRtn};
-pub use service_guard::ServiceGuard;
+pub use service_guard::{ServiceGuard, service_guard};

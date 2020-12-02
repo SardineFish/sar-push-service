@@ -7,6 +7,7 @@ use mongodb::{
     bson::{self, doc},
     error::Error as MongoError,
 };
+use std::vec::Vec;
 
 impl Model {
     pub async fn init_db(&self) -> Result<(), Error> {
@@ -32,24 +33,26 @@ impl Model {
         self.db
             .create_collection(COLLECTION_PROFILE, options)
             .await
-            .map_err(mongo_error)?;
+            .map_err(mongo_error);
 
         info!("Init root user...");
-        let root = UserProfile {
-            uid: "root".to_string(),
-            secret: "secret_must_change".to_string(),
-            description: "Root user".to_string(),
-            access: Access::Root,
-            services: vec![
-                // Root user can only used to create admin user.
-                ServiceRecord::new(Service::UserAccessControl(AccessManagerProfile {
+
+        self.remove_user("root").await?;
+        let mut root = self.new_user("Root User".to_string(), "Root user.".to_string(), Access::Root);
+        root.uid = "root".to_string();
+        root.secret = "secret_must_change".to_string();
+        root.services
+            .push(ServiceRecord::new(Service::UserAccessControl(
+                AccessManagerProfile {
                     access: Access::Root,
-                })),
-                ServiceRecord::new(Service::ServiceManagement(ServiceManagerProfile {
+                },
+            )));
+        root.services
+            .push(ServiceRecord::new(Service::ServiceManagement(
+                ServiceManagerProfile {
                     access: Access::Root,
-                })),
-            ],
-        };
+                },
+            )));
         self.add_profile(root).await?;
         warn!("Root user with secret 'secret_must_change' must be change after init.");
         Ok(())

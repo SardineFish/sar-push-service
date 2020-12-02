@@ -35,7 +35,6 @@ async fn main() -> std::io::Result<()> {
         model.init_db().await.unwrap();
     }
 
-
     HttpServer::new(move || {
         App::new()
             .data(model.clone())

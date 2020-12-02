@@ -80,7 +80,7 @@ impl Model {
         let query = id_query!(id);
         let update = doc! {
             "$set": {
-                "services.$[element].profile": bson::to_bson(&service.profile).unwrap(),
+                "services.$[element].profile": bson::to_bson(&service.service).unwrap(),
             }
         };
         let mut option = mongodb::options::UpdateOptions::default();

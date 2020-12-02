@@ -52,7 +52,7 @@ async fn get_profile(request: &ServiceRequest) -> Result<model::UserProfile, act
     let id = auth.user_id().to_string();
     let password = auth.password()
         .ok_or(web_errors::ErrorUnauthorized("Unauthorized"))?;
-    let profile = model.get_profile(id)
+    let profile = model.get_profile(&id)
         .await.map_err(map_error)?;
     if &profile.secret != password {
         Err(web_errors::ErrorUnauthorized("Unauthorized"))
