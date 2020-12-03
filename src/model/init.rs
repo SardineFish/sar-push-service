@@ -1,5 +1,6 @@
 use super::{
-    access::COLLECTION_PROFILE, error::mongo_error, service, Access, AccessManagerProfile, Error,
+    profile::COLLECTION_PROFILE,
+    error::mongo_error, service, Access, AccessManagerProfile, Error,
     Model, Service, ServiceManagerProfile, ServiceRecord, UserProfile,
 };
 use log::{info, warn};

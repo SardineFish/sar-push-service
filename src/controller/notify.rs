@@ -7,7 +7,7 @@ struct Params {
 }
 
 #[get("/queue")]
-pub async fn queue(params: web::Query<Params>, body: String) -> Result<HttpResponse> {
+async fn queue(params: web::Query<Params>, body: String) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok()
         .finish())
 }

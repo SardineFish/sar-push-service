@@ -6,6 +6,7 @@ mod error;
 mod notify;
 mod init;
 mod service;
+mod profile;
 
 use std::time::Duration;
 
@@ -33,7 +34,8 @@ impl Model {
     }
 }
 
-pub use access::{ UserProfile, Access, Service, ServiceRecord, ExtractProfile, AccessManagerProfile };
+pub use profile::{ UserProfile, Access, Service, ServiceRecord, ExtractProfile, ValidateProfile };
+pub use access::{ AccessManagerProfile };
 pub use error::{ Error };
 pub use notify::NotifyProfile;
 pub use service::{ ServiceManagerProfile };

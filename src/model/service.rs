@@ -3,7 +3,7 @@ use std::vec;
 use super::{
     Model,
     error::*,
-    access::*
+    profile::*,
 };
 
 use mongodb::{

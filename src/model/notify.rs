@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-use super::{access::ValidateProfile, ExtractProfile, Service};
+use super::{ValidateProfile, ExtractProfile, Service};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NotifyProfile {
