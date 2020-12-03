@@ -5,10 +5,11 @@ use actix_web::{
     web::{self, Path},
     HttpRequest, HttpResponse, Responder, Result,
 };
-use model::{Access, Service, ServiceManagerProfile, UserProfile};
+use model::{Access, Service, ServiceManagerProfile, UserProfile, ValidateProfile};
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 use web::Json;
+use crate::utils::assert::*;
 
 use crate::{model, model::Error as ModelError, utils::variant_eq};
 
@@ -47,12 +48,10 @@ fn handle_model_err(err: ModelError) -> actix_web::Error {
 async fn get_profile(
     Path(uid): Path<String>,
     model: Model,
+    auth: Auth,
     service: ServiceProfile,
 ) -> Result<Json<Vec<ServiceProfileData>>> {
-    let profile = model.get_profile(&uid).await.map_err(handle_model_err)?;
-    if service.access <= profile.access {
-        return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
-    }
+    let profile: UserProfile = model.allow_self_or_admin_access(&auth, service.access, &uid).await?;
 
     let data = profile
         .services
@@ -80,6 +79,10 @@ async fn add_service(
         return Err(web_errors::ErrorConflict("Service already existed"));
     }
 
+    if !data.validate_properties(&service) {
+        return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
+    }
+
     let record = model
         .add_service(&uid, data)
         .await
@@ -103,6 +106,10 @@ async fn update_service(
         .allow_self_or_admin_access(&auth, service.access, &uid)
         .await?;
 
+    if !data.validate_properties(&service) {
+        return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
+    }
+
     let service_id = ObjectId::with_string(&service_id)
         .map_err(|_| web_errors::ErrorBadRequest("Invalid service_id"))?;
 
@@ -122,7 +129,7 @@ async fn update_service(
 
         Ok(Json(ServiceProfileData::from(service_profile)))
     } else {
-        Err(web_errors::ErrorBadRequest("Invalid data format"))
+        Err(web_errors::ErrorBadRequest("Change of service type is forbidden"))
     }
 }
 
@@ -155,5 +162,8 @@ async fn remove_service(
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(get_profile).service(add_service);
+    cfg.service(get_profile)
+        .service(add_service)
+        .service(update_service)
+        .service(remove_service);
 }

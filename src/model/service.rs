@@ -32,7 +32,7 @@ impl ExtractProfile<ServiceManagerProfile> for ServiceManagerProfile {
 
 impl ValidateProfile for ServiceManagerProfile {
     fn validate_properties(&self, profile: &super::service::ServiceManagerProfile) -> bool {
-        self.access <= profile.access
+        self.access < profile.access
     }
 }
 

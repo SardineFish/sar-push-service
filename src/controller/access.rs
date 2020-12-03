@@ -70,7 +70,7 @@ async fn add_user(
 ) -> Result<Json<UserAccessProfile>> {
     let name = replace(&mut user.name, String::new());
     
-    if service.access < user.access {
+    if service.access <= user.access {
         return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
     }
 
