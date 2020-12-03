@@ -19,3 +19,7 @@ log = "0.4.11"
 clap = "3.0.0-beta.2"
 openssl = { version = "0.10.30"}
 hex = "0.4.2"
+
+[dev-dependencies]
+actix-rt = "1.1.1"
+actix-http = "2.2.0"

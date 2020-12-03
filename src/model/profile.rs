@@ -27,6 +27,13 @@ pub struct UserProfile {
     pub services: Vec<ServiceRecord>,
 }
 
+impl UserProfile {
+    #[cfg(test)]
+    pub fn set_id(&mut self, id: ObjectId) {
+        self._id = id;
+    }
+}
+
 pub const KEY_ID: &str = "uid";
 pub const KEY_SERVICES: &str = "services";
 pub const KEY_SECRET: &str = "secret";

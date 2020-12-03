@@ -1,8 +1,13 @@
 use std::mem::discriminant;
 
+use futures::Future;
+use std::pin::Pin;
+
 pub fn variant_eq<T>(a: &T, b: &T) -> bool {
     discriminant(a) == discriminant(b)
 }
+
+pub type FutureRtnT<'a, T> = Pin<Box<Future<Output = T> + 'a>>;
 
 pub mod assert {
 
