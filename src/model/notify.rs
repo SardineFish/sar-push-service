@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-use super::{ExtractProfile, Service};
+use super::{access::ValidateProfile, ExtractProfile, Service};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NotifyProfile {
@@ -16,5 +16,8 @@ impl ExtractProfile<NotifyProfile> for NotifyProfile {
             _ => None,
         }
     }
+}
+
+impl ValidateProfile for NotifyProfile {
 }
 

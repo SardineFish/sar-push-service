@@ -11,6 +11,7 @@ extern crate actix_web_httpauth;
 mod controller;
 mod middleware;
 mod model;
+mod utils;
 
 use actix_web::{middleware::Logger, App, HttpServer, Result};
 use env_logger::Env;

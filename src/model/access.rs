@@ -35,7 +35,7 @@ pub const KEY_ID: &str = "uid";
 pub const KEY_SERVICES: &str = "services";
 pub const KEY_SECRET: &str = "secret";
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type", content="profile")]
 pub enum Service {
     UserAccessControl(AccessManagerProfile),
@@ -43,11 +43,37 @@ pub enum Service {
     ServiceManagement(super::service::ServiceManagerProfile),
 }
 
+impl Service {
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Service::UserAccessControl(_) => "UserAccessControl",
+            Service::EmailNotify(_) => "EmailNotify",
+            Service::ServiceManagement(_) => "ServiceManagement",
+        }
+    }
+}
+
+pub trait ValidateProfile {
+    fn validate_properties(&self, profile: &super::service::ServiceManagerProfile) -> bool {
+        profile.access >= Access::User
+    }
+}
+
+impl ValidateProfile for Service {
+    fn validate_properties(&self, manager_profile: &super::service::ServiceManagerProfile) -> bool {
+        match self {
+            Service::UserAccessControl(profile) => profile.validate_properties(manager_profile),
+            Service::EmailNotify(profile) => profile.validate_properties(manager_profile),
+            Service::ServiceManagement(profile) => profile.validate_properties(manager_profile)
+        }
+    }
+}
+
 pub trait ExtractProfile<T> {
     fn extract_from(service: &Service) -> Option<&Self>;
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ServiceRecord {
     pub _id: ObjectId,
     pub service: Service,
@@ -73,6 +99,12 @@ impl ExtractProfile<AccessManagerProfile> for AccessManagerProfile {
             Service::UserAccessControl(profile) => Some(profile),
             _ => None,
         }
+    }
+}
+
+impl ValidateProfile for AccessManagerProfile {
+    fn validate_properties(&self, profile: &super::service::ServiceManagerProfile) -> bool {
+        self.access <= profile.access
     }
 }
 

@@ -30,6 +30,12 @@ impl ExtractProfile<ServiceManagerProfile> for ServiceManagerProfile {
     }
 }
 
+impl ValidateProfile for ServiceManagerProfile {
+    fn validate_properties(&self, profile: &super::service::ServiceManagerProfile) -> bool {
+        self.access <= profile.access
+    }
+}
+
 macro_rules! id_query {
     ($id: expr) => (doc! { KEY_ID: $id })
 }
@@ -50,46 +56,64 @@ impl Model {
             .collect();
         Ok(service_docs)
     }
-    pub async fn add_service(&self, id: String, service: ServiceRecord) -> Result<(), Error> {
+    pub async fn add_service(&self, id: &str, service: Service) -> Result<ServiceRecord, Error> {
         let coll = self.db.collection(COLLECTION_PROFILE);
-        let query = id_query!(id);
-        let update = doc! {
-            "$push": {
-                KEY_SERVICES: bson::to_bson(&service).unwrap(),
+        let query = doc! {
+            "uid": id,
+            "services": {
+                "$not": {
+                    "$elemMatch": {
+                        "services.type": service.type_name()
+                    }
+                }
             }
         };
-        coll.update_one(query, update, None)
+        let record = ServiceRecord::new(service);
+        let update = doc! {
+            "$push": {
+                KEY_SERVICES: bson::to_bson(&record).unwrap(),
+            }
+        };
+        let result = coll.update_one(query, update, None)
             .await.map_err(mongo_error)?;
-        Ok(())
+        if result.matched_count <= 0 {
+            Err(Error::NoRecord)
+        } else {
+            Ok(record)
+        }
     }
-    pub async fn remove_service(&self, id: String, service: ServiceRecord) -> Result<(), Error> {
+    pub async fn remove_service(&self, uid: &str, service: ServiceRecord) -> Result<ServiceRecord, Error> {
         let coll = self.db.collection(COLLECTION_PROFILE);
-        let query = id_query!(id);
+        let query = id_query!(uid);
         let update = doc! {
             "$pull": {
                 KEY_SERVICES: {
-                    "_id": service._id
+                    "_id": service._id.clone()
                 }
             }
         };
         coll.update_one(query, update, None).await.map_err(mongo_error)?;
-        Ok(())
+        Ok(service)
     }
-    pub async fn update_service(&self, id: String, service: ServiceRecord) -> Result<(), Error> {
+    pub async fn update_service(&self, id: &str, service: ServiceRecord) -> Result<(), Error> {
         let coll = self.db.collection(COLLECTION_PROFILE);
         let query = id_query!(id);
         let update = doc! {
             "$set": {
-                "services.$[element].profile": bson::to_bson(&service.service).unwrap(),
+                "services.$[elem].service": bson::to_bson(&service.service).unwrap(),
             }
         };
         let mut option = mongodb::options::UpdateOptions::default();
         option.array_filters = Some(vec![
             doc! {
-                "element._id": service._id,
+                "elem._id": service._id,
             }
         ]);
-        coll.update_one(query, update, Some(option)).await.map_err(mongo_error)?;
-        Ok(())
+        let result = coll.update_one(query, update, Some(option)).await.map_err(mongo_error)?;
+        if result.matched_count <= 0 {
+            Err(Error::NoRecord)
+        } else {
+            Ok(())
+        }
     }
 }
