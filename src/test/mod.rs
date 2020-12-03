@@ -1,26 +1,29 @@
 mod helper;
 mod test_access_service;
 
-use actix_web::{App, web::Json, dev::{MessageBody, Service, ServiceRequest, ServiceResponse}, test};
+use actix_web::{App, dev::{MessageBody, ServiceRequest, ServiceResponse}, middleware::Logger, test, web::Json};
 use actix_http::Request;
 use futures::executor::block_on;
 use mongodb::bson::oid::ObjectId;
 use std::{time::Duration, thread::spawn};
 use actix_rt::time;
 
-use crate::model::{Model, UserProfile};
+use crate::{controller, middleware, model::ServiceRecord, model::{AccessManagerProfile, Model, Service, ServiceManagerProfile, Access, UserProfile}};
 
 const TEST_ADDR: &str = "localhost:3000";
 const TEST_ROOT_UID: &str = "test-root";
 const TEST_ROOT_SECRET: &str = "TEST_SECRET";
 
 
-type AppType = impl Service<Request = Request, Response= ServiceResponse, Error = actix_web::Error>;
+type AppType = impl actix_web::dev::Service<Request = Request, Response= ServiceResponse, Error = actix_web::Error>;
 
 async fn config_app() -> AppType {
-    
+    let model = Model::new().await.unwrap();
     test::init_service(
     App::new()
+            .data(model.clone())
+            .wrap(middleware::authentication())
+            .configure(controller::config)
     ).await
 }
 
@@ -34,6 +37,14 @@ async fn init() {
     let oid = ObjectId::with_string("112233445566778899aabbcc").unwrap();
     profile.set_id(oid);
     model.add_profile(profile).await;
+
+    model.add_service(TEST_ROOT_UID, Service::UserAccessControl(AccessManagerProfile {
+        access: Access::Root
+    })).await;
+    model.add_service(TEST_ROOT_UID, Service::ServiceManagement(ServiceManagerProfile {
+        access: Access::Root
+    })).await;
+
 }
 
 #[actix_rt::test]

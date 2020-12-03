@@ -9,7 +9,7 @@ use mongodb::{
 use serde::{Serialize, Deserialize};
 use tokio::stream::StreamExt;
 
-#[derive(Serialize, Deserialize, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum Access {
     Root = 4,
     Admin = 2,

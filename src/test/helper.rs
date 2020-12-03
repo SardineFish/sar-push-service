@@ -1,40 +1,59 @@
+extern crate serde_json;
+
 use actix_web::{App, web::Json, dev::{MessageBody, Service, ServiceRequest, ServiceResponse}, test};
 use actix_http::{Request, http::StatusCode};
 use futures::{Future, executor::block_on};
+use test::TestRequest;
 use std::{time::Duration, thread::spawn};
 use actix_rt::time;
 use std::pin::Pin;
 use super::AppType;
+use serde::{Serialize, Deserialize};
 
 use crate::utils::FutureRtnT;
 
-
-
-trait TestRequestHelper {
-    fn call_service<'a>(self, app: &'a mut AppType) -> Pin<Box<Future<Output = ServiceResponse> + 'a >>;
+pub trait TestRequestHelper {
+    fn auth(self, username: &str, password: &str) -> Self;
 }
 
-impl TestRequestHelper for Request {
-    fn call_service<'a>(self, app: &'a mut AppType) -> Pin<Box<Future<Output = ServiceResponse> + 'a >>  {
-        Box::pin(async move {
-            test::call_service(app, self).await
-        })
+impl TestRequestHelper for TestRequest {
+    fn auth(self, username: &str, password: &str) -> Self {
+        let auth = format!("{}:{}", username, password);
+        let b64 = openssl::base64::encode_block(auth.as_bytes());
+        self.header("Authorization", format!("Basic {}", b64))
     }
 }
 
-trait TestResponseHelper {
-    fn expect_status(&self, code: StatusCode) -> &Self;
-    fn into_json<'a, T: serde::de::DeserializeOwned>(self) -> FutureRtnT<'a, T> ; 
+#[derive(Debug, Deserialize)]
+struct ErrorBody {
+    error: String,
+}
+
+pub trait TestResponseHelper {
+    fn expect_status(self, code: StatusCode) -> Self;
+    fn into_json<T: serde::de::DeserializeOwned>(self) -> Pin<Box<Future<Output = T>>>;
+    fn expect_error_data(self) -> Pin<Box<Future<Output = ()>>>;
 }
 
 impl TestResponseHelper for ServiceResponse {
-    fn expect_status(&self, code: StatusCode) -> &Self {
-        assert_eq!(self.status(), code);
+    fn expect_status(self, code: StatusCode) -> Self {
+        assert_eq!(self.status(), code, "Expect status code {:?} found {:?}", code, self.status());
         self
     }
-    fn into_json<'a, T: serde::de::DeserializeOwned>(self) -> FutureRtnT<'a, T> {
+    fn into_json<T: serde::de::DeserializeOwned>(mut self) -> Pin<Box<Future<Output = T>>>  {
         Box::pin(async move {
-            test::read_body_json(self).await
+            let body = test::read_body(self).await;
+
+            serde_json::from_slice(&body).expect("Failed to deserialize json")
+
+            // test::read_body_json(self).await
+        })
+    }
+    fn expect_error_data(self) -> Pin<Box<Future<Output = ()>>> {
+        Box::pin(async move {
+            let body = test::read_body(self).await;
+
+            serde_json::from_slice::<ErrorBody>(&body).expect(format!("Invalid body format {:?}", &body).as_str());
         })
     }
 }
