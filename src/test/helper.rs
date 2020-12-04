@@ -1,4 +1,5 @@
 extern crate serde_json;
+extern crate colored;
 
 use actix_web::{App, web::Json, dev::{MessageBody, Service, ServiceRequest, ServiceResponse}, test};
 use actix_http::{Request, http::StatusCode};
@@ -9,6 +10,7 @@ use actix_rt::time;
 use std::pin::Pin;
 use super::AppType;
 use serde::{Serialize, Deserialize};
+use colored::*;
 
 use crate::utils::FutureRtnT;
 
@@ -56,4 +58,15 @@ impl TestResponseHelper for ServiceResponse {
             serde_json::from_slice::<ErrorBody>(&body).expect(format!("Invalid body format {:?}", &body).as_str());
         })
     }
+}
+
+pub fn init_log() {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+}
+
+pub async fn test_case<T>(description: &str, f: impl Future<Output=T>) -> T {
+    print!("Test '{}' ... ", description);
+    let result = f.await;
+    println!("{}", "pass".green());
+    result
 }

@@ -1,13 +1,13 @@
+use super::{helper::*, TEST_ROOT_SECRET};
+use crate::model::{self, Access, UserProfile};
 use actix_http::http::StatusCode;
 use actix_rt;
-use actix_web::{dev::ServiceResponse, test::TestRequest};
 use actix_web::test;
+use actix_web::{dev::ServiceResponse, test::TestRequest};
 use log::info;
-use serde::{Serialize, Deserialize};
-use crate::model::{self, Access, UserProfile};
-use super::{TEST_ROOT_SECRET, helper::*};
+use serde::{Deserialize, Serialize};
 
-use super::{TEST_ROOT_UID, config_app};
+use super::{config_app, TEST_ROOT_UID};
 
 #[derive(Serialize, Deserialize)]
 struct UserAccessProfile {
@@ -50,11 +50,14 @@ struct UserProfilePartial {
 async fn test_user_profile() {
     let mut app = config_app().await;
 
-    TestRequest::get().uri(&format!("/access/user/{}", TEST_ROOT_UID))
+    TestRequest::get()
+        .uri(&format!("/access/user/{}", TEST_ROOT_UID))
         .auth(TEST_ROOT_UID, TEST_ROOT_SECRET)
-        .send_request(&mut app).await
+        .send_request(&mut app)
+        .await
         .expect_status(StatusCode::OK)
-        .into_json::<PublicUserProfile>().await;
+        .into_json::<PublicUserProfile>()
+        .await;
 }
 
 // GET /access/user/{uid}
@@ -65,38 +68,57 @@ async fn test_user_creation() {
     let data = PublicUserProfile {
         name: "Test admin".to_string(),
         description: "A test admin's description.".to_string(),
-        access: Access::Admin
+        access: Access::Admin,
     };
 
-    // Add admin with Root should be ok
-    let admin_one: UserAccessProfile = TestRequest::post().uri("/access/user")
-        .auth(TEST_ROOT_UID, TEST_ROOT_SECRET)
-        .set_json(&data)
-        .send_request(&mut app).await
-        .expect_status(StatusCode::OK)
-        .into_json::<UserAccessProfile>().await;
+    let admin_one: UserAccessProfile = test_case("Add Admin with Root should be ok", async {
+        TestRequest::post()
+            .uri("/access/user")
+            .auth(TEST_ROOT_UID, TEST_ROOT_SECRET)
+            .set_json(&data)
+            .send_request(&mut app)
+            .await
+            .expect_status(StatusCode::OK)
+            .into_json::<UserAccessProfile>()
+            .await
+    })
+    .await;
 
-    // Query lower user profile should be ok
-    let profile: PublicUserProfile = TestRequest::get().uri(&format!("/access/user/{}", &admin_one.uid))
-        .auth(TEST_ROOT_UID, TEST_ROOT_SECRET)
-        .send_request(&mut app).await
-        .expect_status(StatusCode::OK)
-        .into_json::<PublicUserProfile>().await;
-    assert_eq!(profile, data);
+    let profile = test_case("Query lower user profile should be ok", async {
+        let profile: PublicUserProfile = TestRequest::get()
+            .uri(&format!("/access/user/{}", &admin_one.uid))
+            .auth(TEST_ROOT_UID, TEST_ROOT_SECRET)
+            .send_request(&mut app)
+            .await
+            .expect_status(StatusCode::OK)
+            .into_json::<PublicUserProfile>()
+            .await;
+        assert_eq!(profile, data);
+        profile
+    })
+    .await;
 
-    // Query self profile should be ok
-    TestRequest::get().uri(&format!("/access/user/{}", &admin_one.uid))
-        .auth(&admin_one.uid, &admin_one.secret)
-        .send_request(&mut app).await
-        .expect_status(StatusCode::OK)
-        .into_json::<PublicUserProfile>().await;
+    test_case("Query self profile should be ok", async {
+        TestRequest::get()
+            .uri(&format!("/access/user/{}", &admin_one.uid))
+            .auth(&admin_one.uid, &admin_one.secret)
+            .send_request(&mut app)
+            .await
+            .expect_status(StatusCode::OK)
+            .into_json::<PublicUserProfile>()
+            .await;
+    })
+    .await;
 
-    // Query Root profile from Admin should be forbidden
-    TestRequest::get().uri(&format!("/access/user/{}", TEST_ROOT_UID))
-        .auth(&admin_one.uid, &admin_one.secret)
-        .send_request(&mut app).await
-        .expect_status(StatusCode::FORBIDDEN)
-        .expect_error_data().await;
-
-    
+    test_case("Query Root profile from Admin should be forbidden", async {
+        TestRequest::get()
+            .uri(&format!("/access/user/{}", TEST_ROOT_UID))
+            .auth(&admin_one.uid, &admin_one.secret)
+            .send_request(&mut app)
+            .await
+            .expect_status(StatusCode::FORBIDDEN)
+            .expect_error_data()
+            .await;
+    })
+    .await;
 }
