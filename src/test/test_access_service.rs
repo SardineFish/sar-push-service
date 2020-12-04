@@ -151,6 +151,14 @@ async fn test_user_profile() {
             .await;
     });
 
+    test_case!("Query non-exists user should be 404", async {
+        request_get_profile(&mut app, &root, "This_user_must_not_exists")
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error_data()
+            .await;
+    });
+
     cleanup(app, root, vec![admin, another_admin]).await;
     
 }
@@ -176,7 +184,7 @@ async fn test_user_creation() {
     });
 
     
-    test_case!("Add Root by Admin should be forbidden", async {
+    test_case!("Add higher level user should be forbidden", async {
         request_add_user(&mut app, &admin, &UserInfo::new_for_test(Access::Root))
             .await
             .expect_status(StatusCode::FORBIDDEN)
@@ -184,7 +192,7 @@ async fn test_user_creation() {
             .await
     });
 
-    test_case!("Add Admin by Admin should be forbidden", async {
+    test_case!("Add same level user should be forbidden", async {
         request_add_user(&mut app, &admin, &UserInfo::new_for_test(Access::Admin))
             .await
             .expect_status(StatusCode::FORBIDDEN)
@@ -192,29 +200,19 @@ async fn test_user_creation() {
             .await
     });
 
-    let profile = test_case!("Query lower user profile should be ok", async {
-        let profile: UserInfo = request_get_profile(&mut app, &root, &admin.uid)
+    test_case!("Add user with invalid body should be bad request", async {
+        TestRequest::post()
+            .uri("/access/user")
+            .auth(&root.uid, &root.secret)
+            .header("Content-Type", "application/json")
+            .set_payload(r#"{
+                "name": "test name",
+                "non_description": "..."
+            }"#)
+            .send_request(&mut app)
             .await
-            .expect_status(StatusCode::OK)
-            .into_json::<UserInfo>()
-            .await;
-        assert_eq!(profile, data);
-        profile
-    });
-
-    test_case!("Query self profile should be ok", async {
-        request_get_profile(&mut app, &admin, &admin.uid)
-            .await
-            .expect_status(StatusCode::OK)
-            .into_json::<UserInfo>()
-            .await;
-    });
-
-    test_case!("Query Root profile from Admin should be forbidden", async {
-        request_get_profile(&mut app, &admin, &root.uid)
-            .await
-            .expect_status(StatusCode::FORBIDDEN)
-            .expect_error_data()
+            .expect_status(StatusCode::BAD_REQUEST)
+            .expect_empty()
             .await;
     });
 
@@ -279,6 +277,33 @@ async fn test_profile_update() {
             .await;
     });
 
+    test_case!("Modify profile of non-exists user should be 404", async {
+        request_update_profile(&mut app, &root, "this_user_must_not_exists", &UserInfoPartial {
+                description: Some(admin_data.description.clone()),
+                ..Default::default()
+            })
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error_data()
+            .await;
+    });
+
+    test_case!("Modify profile with other fields should be ok and affect nothing", async {
+        let profile: UserInfo = TestRequest::patch()
+            .uri(&format!("/access/user/{}", &admin.uid))
+            .auth(&root.uid, &root.secret)
+            .header("Content-Type", "application/json")
+            .set_payload(r#"{
+                "secret": "Attempt to update secret"
+            }"#)
+            .send_request(&mut app)
+            .await
+            .expect_status(StatusCode::OK)
+            .into_json()
+            .await;
+        assert_eq!(profile, admin_data);
+    });
+
     
     cleanup(app, root, vec![admin, another_admin]).await;
 }
@@ -340,6 +365,14 @@ async fn test_secret_revoke()
             .await;
         assert_eq!(profile.uid, another_admin.uid);
         assert_ne!(profile.secret, another_admin.secret);
+    });
+
+    test_case!("Revoke secret of non-exists user should be 404", async {
+        request_revoke_secret(&mut app, &root, "this_user_must_not_exists")
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error_data()
+            .await;
     });
 
     cleanup(app, root, vec![admin, another_admin]).await;
