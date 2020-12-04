@@ -1,19 +1,14 @@
 use super::{
     profile::COLLECTION_PROFILE,
-    error::mongo_error, service, Access, AccessManagerProfile, Error,
-    Model, Service, ServiceManagerProfile, ServiceRecord, UserProfile,
+    error::mongo_error, Access, AccessManagerProfile, Error,
+    Model, Service, ServiceManagerProfile, ServiceRecord,
 };
 use log::{info, warn};
-use mongodb::{
-    bson::{self, doc},
-    error::Error as MongoError,
-};
-use std::vec::Vec;
 
 impl Model {
     pub async fn init_db(&self) -> Result<(), Error> {
         info!("Init database...");
-        let mut options = mongodb::options::CreateCollectionOptions::default();
+        let options = mongodb::options::CreateCollectionOptions::default();
         // options.validation = Some(doc! {
         //     "bsonType": "object",
         //     "required": [ "uid", "description", "secret" ],
@@ -34,7 +29,7 @@ impl Model {
         self.db
             .create_collection(COLLECTION_PROFILE, options)
             .await
-            .map_err(mongo_error);
+            .map_err(mongo_error)?;
 
         info!("Init root user...");
 

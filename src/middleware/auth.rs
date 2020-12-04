@@ -1,14 +1,8 @@
-use actix_web::{web, HttpResponse, error as web_errors, dev::{MessageBody, Service, ServiceRequest, ServiceResponse}};
-use model::UserProfile;
-use crate::{model::{self, Access, Model, Error as ModelError}};
-use std::pin::Pin;
+use actix_web::{web, error as web_errors, dev::{MessageBody, Service, ServiceRequest, ServiceResponse}};
+use crate::{model::{self, Model, Error as ModelError}};
 use std::fmt;
 use serde::{Deserialize};
-use futures::{
-    Future,
-};
-use futures_util::FutureExt;
-use std::cell::{RefCell, RefMut};
+use std::cell::{RefCell};
 use std::rc::Rc;
 use super::{func_middleware::*};
 use actix_web_httpauth::extractors::{
@@ -25,7 +19,6 @@ struct AccessQuery {
 #[derive(Debug)]
 enum Error {
     InternalError(ModelError),
-    AccessDeny,
     UnexpectedError,
     Unauthorized,
 }
@@ -34,7 +27,6 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::InternalError(_) => write!(f, "Internal Error"),
-            Error::AccessDeny => write!(f, "Access denied"),
             Error::UnexpectedError => write!(f, "Unexpected internal error."),
             Error::Unauthorized => write!(f, "Unauthorized")
         }

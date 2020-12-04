@@ -10,7 +10,6 @@ use mongodb::{
     bson::{
         self,
         doc,
-        oid::ObjectId
     }
 };
 use serde::{Serialize, Deserialize};
@@ -41,7 +40,7 @@ macro_rules! id_query {
 }
 
 impl Model {
-    
+    #[allow(dead_code)]
     pub async fn get_services(&self, id: String) -> Result<Vec<ServiceRecord>, Error> {
         let coll = self.db.collection(COLLECTION_PROFILE);
         let query = id_query!(id);

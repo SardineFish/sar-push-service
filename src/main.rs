@@ -13,15 +13,15 @@ extern crate actix_web_httpauth;
 mod controller;
 mod middleware;
 mod model;
+#[allow(dead_code)]
 mod utils;
 
 #[cfg(test)]
 mod test;
 
-use actix_web::{App, HttpServer, Result, dev::{Body}, dev::MessageBody, dev::Server, dev::Service, dev::ServiceResponse, middleware::Logger, dev::ServiceRequest};
+use actix_web::{App, HttpServer, dev::Server, middleware::Logger};
 use env_logger::Env;
 use model::Model;
-use clap::{Arg};
 
 async fn start_server(addr: &str) -> std::io::Result<Server> {
     let matches = clap::App::new("Sar Push Service")
@@ -45,7 +45,7 @@ async fn start_server(addr: &str) -> std::io::Result<Server> {
             .wrap(Logger::default())
             .configure(controller::config)
     })
-    .bind("127.0.0.1:5000")?
+    .bind(addr)?
     .run();
     Ok(server)
 }

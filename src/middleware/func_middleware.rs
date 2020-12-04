@@ -8,12 +8,10 @@ use std::task::{
 };
 use std::pin::Pin;
 use std::rc::Rc;
-use std::cell::{RefCell, RefMut};
+use std::cell::{RefCell};
 
 pub trait ServiceT<B> = Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>;
 pub type AsyncMiddlewareRtn<B> = Pin<Box<dyn Future<Output = Result<ServiceResponse<B>, actix_web::Error>>>>;
-pub type AsyncFactoryRtn<S, B> = fn(req: ServiceRequest, srv: Rc<RefCell<S>>) 
-        -> AsyncMiddlewareRtn<B>;
 
 #[derive(Clone)]
 pub struct FuncMiddleware<S, F> {

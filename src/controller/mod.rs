@@ -1,6 +1,5 @@
 mod access;
 mod notify;
-mod responder;
 mod extractor;
 mod service;
 mod access_check;
@@ -8,10 +7,9 @@ mod access_check;
 use crate::middleware;
 use crate::model;
 use actix_web::web;
-use middleware::{FuncMiddleware, ServiceGuard, service_guard};
+use middleware::{service_guard};
 
-use actix_web::{dev::Service, dev::ServiceRequest};
-use model::{Access, AccessManagerProfile, NotifyProfile, ServiceManagerProfile};
+use model::{AccessManagerProfile, ServiceManagerProfile};
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(

@@ -5,11 +5,10 @@ use actix_web::{
     web::{self, Path},
     HttpRequest, HttpResponse, Responder, Result,
 };
-use model::{Access, Service, ServiceManagerProfile, UserProfile, ValidateProfile};
+use model::{ Service, ServiceManagerProfile, UserProfile, ValidateProfile};
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 use web::Json;
-use crate::utils::assert::*;
 
 use crate::{model, model::Error as ModelError, utils::variant_eq};
 

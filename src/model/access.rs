@@ -6,8 +6,7 @@ use super::error::*;
 
 use mongodb::{
     bson,
-    bson::{ doc, Bson, oid::ObjectId, },
-    Cursor,
+    bson::{ doc, oid::ObjectId, },
 };
 use serde::{Serialize, Deserialize};
 use tokio::stream::StreamExt;
@@ -39,6 +38,7 @@ macro_rules! id_query {
 }
 
 impl Model {
+    #[allow(dead_code)]
     pub async fn get_all_profile(&self) -> Result<Vec<UserProfile>, Error> {
         let collection = self.db.collection(COLLECTION_PROFILE);
         let cursor = collection.find(doc! {}, None).await.map_err(mongo_error)?;
@@ -101,7 +101,7 @@ impl Model {
     pub async fn remove_user(&self, id: &str) -> Result<(), Error> {
         let coll = self.db.collection(COLLECTION_PROFILE);
         let query = id_query!(id);
-        let result = coll.delete_one(query, None).await.map_err(mongo_error)?;
+        coll.delete_one(query, None).await.map_err(mongo_error)?;
         Ok(())
     }
 
@@ -120,6 +120,7 @@ impl Model {
         }
     } 
 
+    #[allow(dead_code)]
     pub async fn get_secret(&self, id: String) -> Result<String, Error> {
         let coll = self.db.collection(COLLECTION_PROFILE);
         let query = id_query!(id);

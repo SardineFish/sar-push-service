@@ -7,7 +7,7 @@ pub fn variant_eq<T>(a: &T, b: &T) -> bool {
     discriminant(a) == discriminant(b)
 }
 
-pub type FutureRtnT<'a, T> = Pin<Box<Future<Output = T> + 'a>>;
+pub type FutureRtnT<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 pub mod assert {
 
