@@ -27,6 +27,7 @@ enum Error {
     InternalError(ModelError),
     AccessDeny,
     UnexpectedError,
+    Unauthorized,
 }
 
 impl fmt::Display for Error {
@@ -34,7 +35,8 @@ impl fmt::Display for Error {
         match self {
             Error::InternalError(_) => write!(f, "Internal Error"),
             Error::AccessDeny => write!(f, "Access denied"),
-            Error::UnexpectedError => write!(f, "Unexpected internal error.")
+            Error::UnexpectedError => write!(f, "Unexpected internal error."),
+            Error::Unauthorized => write!(f, "Unauthorized")
         }
     }
 }
@@ -46,16 +48,24 @@ fn map_error(err: ModelError) -> actix_web::Error {
     }
 }
 
+fn map_unauthorized<T>(_: T) -> actix_web::Error {
+    web_errors::ErrorUnauthorized(Error::Unauthorized)
+}
+fn unauthorized() -> actix_web::Error {
+    web_errors::ErrorUnauthorized(Error::Unauthorized)
+}
+
 async fn get_profile(request: &ServiceRequest) -> Result<model::UserProfile, actix_web::Error> {
     let model = request.app_data::<web::Data<Model>>().unwrap();
-    let auth = BasicAuth::from_service_request(&request).await?;
+    let auth = BasicAuth::from_service_request(&request).await
+        .map_err(map_unauthorized)?;
     let id = auth.user_id().to_string();
     let password = auth.password()
-        .ok_or(web_errors::ErrorUnauthorized("Unauthorized"))?;
+        .ok_or(unauthorized())?;
     let profile = model.get_profile(&id)
         .await.map_err(map_error)?;
     if &profile.secret != password {
-        Err(web_errors::ErrorUnauthorized("Unauthorized"))
+        Err(unauthorized())
     } else {
         Ok(profile)
     }

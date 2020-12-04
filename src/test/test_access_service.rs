@@ -50,14 +50,27 @@ struct UserProfilePartial {
 async fn test_user_profile() {
     let mut app = config_app().await;
 
-    TestRequest::get()
-        .uri(&format!("/access/user/{}", TEST_ROOT_UID))
-        .auth(TEST_ROOT_UID, TEST_ROOT_SECRET)
-        .send_request(&mut app)
-        .await
-        .expect_status(StatusCode::OK)
-        .into_json::<PublicUserProfile>()
-        .await;
+    test_case("Unauthorized request should be block", async {
+        TestRequest::get()
+            .uri(&format!("/access/user/{}", TEST_ROOT_UID))
+            .send_request(&mut app)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error_data()
+            .await;
+    }).await;
+
+    test_case("Authorized query of self profile should be ok", async {
+        TestRequest::get()
+            .uri(&format!("/access/user/{}", TEST_ROOT_UID))
+            .auth(TEST_ROOT_UID, TEST_ROOT_SECRET)
+            .send_request(&mut app)
+            .await
+            .expect_status(StatusCode::OK)
+            .into_json::<PublicUserProfile>()
+            .await;
+    }).await;
+    
 }
 
 // GET /access/user/{uid}

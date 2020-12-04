@@ -41,6 +41,7 @@ async fn start_server(addr: &str) -> std::io::Result<Server> {
         App::new()
             .data(model.clone())
             .wrap(middleware::authentication())
+            .wrap(middleware::error_formatter())
             .wrap(Logger::default())
             .configure(controller::config)
     })

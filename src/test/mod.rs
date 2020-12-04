@@ -23,6 +23,7 @@ async fn config_app() -> AppType {
     App::new()
             .data(model.clone())
             .wrap(middleware::authentication())
+            .wrap(middleware::error_formatter())
             .configure(controller::config)
     ).await
 }
