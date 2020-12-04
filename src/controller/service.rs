@@ -144,8 +144,10 @@ async fn remove_service(
     let profile: UserProfile = model
         .allow_self_or_admin_access(&auth, service.access, &uid)
         .await?;
-    let service_id = ObjectId::with_string(&service_id)
-        .map_err(|_| web_errors::ErrorBadRequest("Invalid service_id"))?;
+    let service_id = match ObjectId::with_string(&service_id) {
+        Ok(id) => id,
+        Err(_) => { return Ok(HttpResponse::NoContent().finish()); }
+    };
     let record = profile.services.into_iter().find(|s| s._id == service_id);
     if let Some(record) = record {
         match model.remove_service(&uid, record).await {

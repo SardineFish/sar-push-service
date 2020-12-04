@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 
 use super::{ValidateProfile, ExtractProfile, Service};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct NotifyProfile {
     pub address: String,
     pub password: String,

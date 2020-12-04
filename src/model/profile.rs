@@ -40,7 +40,7 @@ pub const KEY_SECRET: &str = "secret";
 
 pub const COLLECTION_PROFILE: &str = "profile";
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(tag = "type", content="profile")]
 pub enum Service {
     UserAccessControl(super::access::AccessManagerProfile),

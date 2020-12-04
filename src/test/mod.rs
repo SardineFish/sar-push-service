@@ -1,6 +1,7 @@
 mod helper;
 mod test_access_service;
 mod test_auth;
+mod test_service;
 
 use actix_web::{App, dev::{MessageBody, ServiceRequest, ServiceResponse}, middleware::Logger, test, web::Json};
 use actix_http::Request;

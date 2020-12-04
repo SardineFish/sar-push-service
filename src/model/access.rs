@@ -13,7 +13,7 @@ use serde::{Serialize, Deserialize};
 use tokio::stream::StreamExt;
 use super::profile::*;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct AccessManagerProfile {
     pub access: Access,
 }

@@ -5,6 +5,7 @@ use actix_rt;
 use actix_web::test;
 use actix_web::{dev::ServiceResponse, test::TestRequest};
 use log::info;
+use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
 use super::{config_app, TEST_ROOT_UID};
@@ -95,7 +96,7 @@ pub fn make_root_access() -> UserAuth {
     }
 }
 
-async fn cleanup(mut app: AppType, root: UserAuth, users: Vec<UserAuth>) {
+pub async fn cleanup(mut app: AppType, root: UserAuth, users: Vec<UserAuth>) {
     test_case!("Cleanup, delete users by Root should be ok", async {
         for user in &users {
             request_delete_user(&mut app, &root, &user.uid)
@@ -103,6 +104,21 @@ async fn cleanup(mut app: AppType, root: UserAuth, users: Vec<UserAuth>) {
                 .expect_status(StatusCode::OK);
         }
     });
+}
+
+pub async fn add_user(app: &mut AppType, root: &UserAuth, info: &UserInfo) -> UserAuth {
+    let user_access: UserAuth = test_case!("Add users with Root should always be ok", async {
+        request_add_user(app, root, info)
+            .await
+            .expect_status(StatusCode::OK)
+            .into_json()
+            .await
+    });
+    user_access
+}
+
+pub fn non_exists_id() -> String {
+    ObjectId::new().to_string()
 }
 
 // GET /access/user/{uid}
@@ -152,7 +168,7 @@ async fn test_user_profile() {
     });
 
     test_case!("Query non-exists user should be 404", async {
-        request_get_profile(&mut app, &root, "This_user_must_not_exists")
+        request_get_profile(&mut app, &root, &non_exists_id())
             .await
             .expect_status(StatusCode::NOT_FOUND)
             .expect_error_data()
@@ -278,7 +294,7 @@ async fn test_profile_update() {
     });
 
     test_case!("Modify profile of non-exists user should be 404", async {
-        request_update_profile(&mut app, &root, "this_user_must_not_exists", &UserInfoPartial {
+        request_update_profile(&mut app, &root, &non_exists_id(), &UserInfoPartial {
                 description: Some(admin_data.description.clone()),
                 ..Default::default()
             })
@@ -368,7 +384,7 @@ async fn test_secret_revoke()
     });
 
     test_case!("Revoke secret of non-exists user should be 404", async {
-        request_revoke_secret(&mut app, &root, "this_user_must_not_exists")
+        request_revoke_secret(&mut app, &root, &non_exists_id())
             .await
             .expect_status(StatusCode::NOT_FOUND)
             .expect_error_data()
@@ -439,5 +455,5 @@ async fn test_user_delete() {
             .await;
     });
 
-    cleanup(app, root, vec![another_admin]);
+    cleanup(app, root, vec![another_admin]).await;
 }
