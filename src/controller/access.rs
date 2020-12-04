@@ -12,6 +12,7 @@ use model::UserProfile;
 use serde::{Deserialize, Serialize};
 use web::{Data, Json, Path};
 use super::extractor::ExtensionMove;
+use super::access_check::AccessCheckUtils;
 
 #[derive(Serialize)]
 struct UserAccessProfile {
@@ -47,6 +48,7 @@ struct UserProfileWithUID {
 struct UserProfilePartial {
     name: Option<String>,
     description: Option<String>,
+    access: Option<Access>,
 }
 
 type Auth = ExtensionMove<model::UserProfile>;
@@ -117,21 +119,22 @@ async fn update_profile(
     service: ServiceProfile,
     model: Model,
 ) -> Result<Json<PublicUserProfile>> {
-    if auth.uid != uid && service.access < Access::Admin {
-        return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
-    }
 
-    let mut profile = model.get_profile(&uid).await.map_err(handle_model_err)?;
-
-    if auth.uid != profile.uid && service.access <= profile.access {
-        return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
-    }
+    let mut profile: UserProfile = model.allow_self_or_admin_access(&auth, service.access, &uid).await?;
 
     if let Some(name) = &mut user.name {
         swap(&mut profile.name, name);
     }
     if let Some(desc) = &mut user.description {
         swap(&mut profile.description, desc);
+    }
+    if let Some(access) = user.access {
+        let self_upgrade = uid == auth.uid && access > service.access;
+        let upgrade_others = uid != auth.uid && access >= service.access;
+        if self_upgrade || upgrade_others {
+            return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
+        }
+        profile.access = access;
     }
 
     let profile = model

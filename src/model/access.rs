@@ -76,7 +76,7 @@ impl Model {
             description: description,
             access: access,
             services: vec![ServiceRecord::new(Service::UserAccessControl(AccessManagerProfile {
-                access: Access::User
+                access: access
             }))],
         }
     }

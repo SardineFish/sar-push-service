@@ -64,9 +64,19 @@ pub fn init_log() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 }
 
-pub async fn test_case<T>(description: &str, f: impl Future<Output=T>) -> T {
-    print!("Test '{}' ... ", description);
-    let result = f.await;
-    println!("{}", "pass".green());
-    result
+// pub async fn test_case<T>(description: &str, f: impl Future<Output=T>) -> T {
+//     print!("Test '{}' ... ", description);
+//     let result = f.await;
+//     println!("{}", "pass".green());
+//     result
+// }
+
+#[macro_export]
+macro_rules! test_case {
+    ($description: expr, $body: expr) => ({
+        print!("Test '{}' at {}:{}:{} ... ", $description, file!(), line!(), column!());
+        let result = $body.await;
+        println!("{}", colored::Colorize::green("pass"));
+        result
+    })
 }
