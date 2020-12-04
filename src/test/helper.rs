@@ -35,6 +35,7 @@ pub trait TestResponseHelper {
     fn expect_status(self, code: StatusCode) -> Self;
     fn into_json<T: serde::de::DeserializeOwned>(self) -> Pin<Box<Future<Output = T>>>;
     fn expect_error_data(self) -> Pin<Box<Future<Output = ()>>>;
+    fn expect_empty(self) -> Pin<Box<Future<Output = ()>>>;
 }
 
 impl TestResponseHelper for ServiceResponse {
@@ -56,6 +57,12 @@ impl TestResponseHelper for ServiceResponse {
             let body = test::read_body(self).await;
 
             serde_json::from_slice::<ErrorBody>(&body).expect(format!("Invalid body format {:?}", &body).as_str());
+        })
+    }
+    fn expect_empty(self) -> Pin<Box<Future<Output = ()>>> {
+        Box::pin(async move {
+            let body = test::read_body(self).await;
+            assert_eq!(body.len(), 0, "Expect empty body but found with {} bytes", body.len());
         })
     }
 }

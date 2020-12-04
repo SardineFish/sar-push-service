@@ -43,7 +43,7 @@ impl fmt::Display for Error {
 
 fn map_error(err: ModelError) -> actix_web::Error {
     match err {
-        ModelError::NoRecord => web_errors::ErrorForbidden(Error::AccessDeny),
+        ModelError::NoRecord => web_errors::ErrorUnauthorized(Error::Unauthorized),
         err => web_errors::ErrorInternalServerError(Error::InternalError(err)),
     }
 }

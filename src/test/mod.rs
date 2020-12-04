@@ -1,5 +1,6 @@
 mod helper;
 mod test_access_service;
+mod test_auth;
 
 use actix_web::{App, dev::{MessageBody, ServiceRequest, ServiceResponse}, middleware::Logger, test, web::Json};
 use actix_http::Request;
@@ -27,7 +28,6 @@ async fn config_app() -> AppType {
             .configure(controller::config)
     ).await
 }
-
 
 #[actix_rt::test]
 async fn init() {

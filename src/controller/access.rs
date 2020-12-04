@@ -152,14 +152,8 @@ async fn revoke_secret(
     service: ServiceProfile,
     model: Model,
 ) -> Result<Json<UserAccessProfile>> {
-    if auth.uid != uid && service.access < Access::Admin {
-        return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
-    }
 
-    let profile = model.get_profile(&uid).await.map_err(handle_model_err)?;
-    if service.access < profile.access {
-        return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
-    }
+    model.allow_self_or_admin_access(&auth, service.access, &uid).await?;
 
     let new_secret = model.revoke_secret(&uid).await.map_err(handle_model_err)?;
 
@@ -174,12 +168,10 @@ async fn delete_user(
     Path(uid): Path<String>,
     request: HttpRequest,
     model: Model,
+    auth: Auth,
     service: ServiceProfile,
 ) -> Result<HttpResponse> {
-    if service.access < Access::Admin {
-        return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
-    }
-    let profile;
+    let profile ;
     match model.get_profile(&uid).await {
         Ok(p) => {
             profile = p;
@@ -191,7 +183,9 @@ async fn delete_user(
             return Err(web_errors::ErrorInternalServerError(err));
         }
     }
-    if service.access < profile.access {
+    let self_delete = uid == auth.uid;
+    let can_delete_other = service.access > profile.access;
+    if !self_delete && !can_delete_other {
         return Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED));
     }
     model.remove_user(&uid).await.map_err(handle_model_err)?;
