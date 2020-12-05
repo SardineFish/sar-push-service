@@ -1,9 +1,29 @@
 use bytes::Bytes;
 
-struct MIMEBody {
+#[derive(Default)]
+pub struct MIMEBody {
     content_type: ContentType,
     content_type_encoding: ContentTypeEncoding,
     body: Bytes,
+}
+
+impl MIMEBody {
+    pub fn new<'s, T: Into<&'s str>>(content_type: T) -> Self {
+        MIMEBody {
+            content_type: ContentType::from(content_type),
+            content_type_encoding: ContentTypeEncoding::_7Bit,
+            body: Bytes::new(),
+        }
+    }
+    pub fn text<'s, T: Into<&'s str>>(&mut self, text: T) {
+        self.body = Bytes::from(Into::<&'s str>::into(text).to_string());
+    }
+    pub fn copy_from_slice(&mut self, data: &[u8]) {
+        self.body = Bytes::copy_from_slice(data);
+    }
+    pub fn set_encoding(&mut self, encoding: ContentTypeEncoding) {
+        self.content_type_encoding = encoding;
+    }
 }
 
 impl Into<Bytes> for MIMEBody {
@@ -20,7 +40,7 @@ impl Into<Bytes> for MIMEBody {
     }
 }
 
-enum ContentTypeEncoding {
+pub enum ContentTypeEncoding {
     _7Bit,
     _8Bit,
     Binary,
@@ -28,6 +48,12 @@ enum ContentTypeEncoding {
     Base64,
     IetfToken,
     XToken,
+}
+
+impl Default for ContentTypeEncoding {
+    fn default() -> Self {
+        ContentTypeEncoding::_7Bit
+    }
 }
 
 impl Into<&'static str> for ContentTypeEncoding {
@@ -45,21 +71,31 @@ impl Into<&'static str> for ContentTypeEncoding {
 }
 
 struct ContentType {
-    r#type: String,
+    _type: String,
     sub_type: String,
     parameters: Vec<String>
+}
+
+impl Default for ContentType {
+    fn default() -> Self {
+        ContentType {
+            _type: "text".to_string(),
+            sub_type: "plain".to_string(),
+            parameters: Default::default(),
+        }
+    }
 }
 
 impl<'a, T: Into<&'a str>> From<T> for ContentType {
     fn from(content_type: T) -> Self {
         let content_type: &str = content_type.into();
-        if let Some((r#type, right)) = content_type.split_once('/') {
+        if let Some((_type, right)) = content_type.split_once('/') {
             let mut params = right.split('/');
             let sub_type = params.next().expect("Invalid Content-Type format");
             let params = params.map(|s| s.into()).collect();
 
             ContentType {
-                r#type: r#type.to_string(),
+                _type: _type.to_string(),
                 sub_type: sub_type.to_string(),
                 parameters: params
             }
@@ -71,6 +107,6 @@ impl<'a, T: Into<&'a str>> From<T> for ContentType {
 
 impl Into<String> for ContentType {
     fn into(self) -> String {
-        format!("{}/{}{}", self.r#type, self.sub_type, self.parameters.join(";"))
+        format!("{}/{}{}", self._type, self.sub_type, self.parameters.join(";"))
     }
 }

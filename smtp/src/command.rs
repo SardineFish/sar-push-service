@@ -1,14 +1,17 @@
 use std::{rc::Rc, io::{self, Write, Read}};
 use std::net::TcpStream;
 
-use crate::{smtp::StreamWrite, utils::{smtp_data_transparency, split_buffer_crlf}};
+use bytes::Bytes;
+
+use crate::{mail::MailBox, smtp::StreamWrite, utils::{smtp_data_transparency, split_buffer_crlf}};
 
 pub enum Command {
     EHLO(String),
     HELO(String),
-    MAIL(String),
-    RCPT(String),
-    DATA(Vec<u8>),
+    MAIL(MailBox),
+    RCPT(MailBox),
+    DATABegin,
+    DATAContent(Bytes),
     RSET,
     NOOP,
     QUIT,
@@ -47,7 +50,8 @@ impl SMTPCommand for Command {
             Command::HELO(_) => "HELO",
             Command::MAIL(_) => "MAIL",
             Command::RCPT(_) => "RCPT",
-            Command::DATA(_) => "DATA",
+            Command::DATABegin => "DATA",
+            Command::DATAContent(_) => "",
             Command::VRFY(_) => "VRFY",
             Command::NOOP => "NOOP",
             Command::QUIT => "QUIT",
@@ -59,16 +63,16 @@ impl SMTPCommand for Command {
         match self {
             Command::EHLO(domain) => Some(domain.clone()),
             Command::HELO(domain) => Some(domain.clone()),
-            Command::MAIL(reverse_path) => Some(format!("FROM:<{}>", reverse_path)),
-            Command::RCPT(forward_path) => Some(format!("TO:<{}>", forward_path)),
-            Command::DATA(data) => Some("DATA".to_string()),
+            Command::MAIL(reverse_path) => Some(format!("FROM:<{}>", Into::<String>::into(reverse_path.clone()))),
+            Command::RCPT(forward_path) => Some(format!("TO:<{}>", Into::<String>::into(forward_path.clone()))),
+            Command::DATAContent(data) => Some("DATA".to_string()),
             Command::VRFY(name) => Some(name.clone()),
             _ => None,
         }
     }
 
     fn additional_data<W: Write>(&self, stream: &mut W) -> io::Result<()> {
-        if let Command::DATA(data) = self {
+        if let Command::DATAContent(data) = self {
             stream.write_fmt(format_args!("DATA{}", CRLF))?;
                 let lines = split_buffer_crlf(data);
                 for line in lines {

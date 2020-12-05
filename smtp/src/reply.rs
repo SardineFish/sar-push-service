@@ -1,6 +1,6 @@
 use std::str::Utf8Error;
 
-use crate::{smtp::FromStream};
+use crate::{smtp::FromStream, error::Error as SMTPError};
 use std::{num::ParseIntError, io::{self, Read}, ops::Range, str};
 
 #[derive(Debug, Default)]
@@ -9,11 +9,19 @@ pub struct Reply {
     pub text_lines: Vec<String>,
 }
 
+impl Reply {
+    pub fn expect_code(self, code: u16) -> Result<Self, SMTPError> {
+        if self.code != code {
+            Err(SMTPError::ErrorReply(self))
+        } else {
+            Ok(self)
+        }
+    }
+}
+
 impl FromStream<Reply, ParseError> for Reply {
     fn from_stream<R: Read>(stream: &mut R) -> Result<Reply, ParseError> {
         ReplyParser::parse_from_stream(stream)
-        
-
     }
 }
 

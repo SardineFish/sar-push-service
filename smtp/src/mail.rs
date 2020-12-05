@@ -107,7 +107,8 @@ impl MailBuilder {
     }
 }
 
-struct MailBox {
+#[derive(Clone)]
+pub struct MailBox {
     local_part: Option<String>,
     domain: String,
 }

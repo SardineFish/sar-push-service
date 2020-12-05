@@ -1,16 +1,16 @@
 use std::io::{Write, Read};
 
-use crate::{command::SMTPCommand, extension::Extension, error::{Result, Error}, smtp::SMTPClient};
+use crate::{command::SMTPCommand, error::{Result, Error}, extension::Extension, smtp::{SMTPInner, Stream}};
 use base64;
 
-#[derive(Default)]
-pub struct Auth {
+pub struct Auth<'s, S: Stream> {
     supported_mechanism: Vec<Mechanism>,
+    smtp: &'s mut SMTPInner<S>,
 }
 
-impl Auth {
-    pub fn send_auth<S: Write + Read>(client: &mut SMTPClient<S>, mechanisum: AuthCommand) -> Result<()> {
-        let reply = client.send_command(mechanisum)?;
+impl<'s, S: Stream> Auth<'s, S> {
+    pub fn send_auth(&mut self, mechanisum: AuthCommand) -> Result<()> {
+        let reply = self.smtp.send_command(mechanisum)?;
         if reply.code == 235 {
             Ok(())
         } else {
@@ -19,14 +19,18 @@ impl Auth {
     }
 }
 
-impl Extension for Auth {
+impl<'s, S: Stream> Extension<'s, S> for Auth<'s, S> {
     fn name() -> &'static str {
         "AUTH"
     }
-    fn register(params: &[&str]) -> Self {
-        let mut auth = Self::default();
+    fn register(smtp: &'s mut SMTPInner<S>, params: &[String]) -> Self {
+        
+        let mut auth = Self {
+            supported_mechanism: Default::default(),
+            smtp: smtp,
+        };
         for param in params {
-            match Mechanism::from(*param) {
+            match Mechanism::from(param.as_str()) {
                 Mechanism::Unknown => continue,
                 mechanisum => auth.supported_mechanism.push(mechanisum),
             }

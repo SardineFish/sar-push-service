@@ -7,6 +7,7 @@ pub enum Error {
     ParseError(ParseError),
     ErrorReply(Reply),
     HandshakeError(Box<Error>),
+    ExtensionNotSupported(String),
 }
 pub type Result<T> = std::result::Result<T, Error>;
 
