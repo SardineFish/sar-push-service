@@ -32,7 +32,7 @@ impl Into<Bytes> for MIMEBody {
         let mut buf = Vec::<u8>::with_capacity(self.body.len() + 255);
         buf.extend(Into::<String>::into(self.content_type).as_bytes());
         buf.extend_from_slice(b"\r\n");
-        buf.extend(Into::<&str>::into(self.content_type_encoding).as_bytes());
+        buf.extend(Into::<String>::into(self.content_type_encoding).as_bytes());
         buf.extend_from_slice(b"\r\n\r\n");
         buf.extend_from_slice(&self.body);
         buf.extend_from_slice(b"\r\n\r\n");
@@ -57,9 +57,9 @@ impl Default for ContentTypeEncoding {
     }
 }
 
-impl Into<&'static str> for ContentTypeEncoding {
-    fn into(self) -> &'static str {
-        match self {
+impl Into<String> for ContentTypeEncoding {
+    fn into(self) -> String {
+        let encode = match self {
             ContentTypeEncoding::_7Bit => "7bit",
             ContentTypeEncoding::_8Bit => "8bit",
             ContentTypeEncoding::Base64 => "base64",
@@ -67,7 +67,8 @@ impl Into<&'static str> for ContentTypeEncoding {
             ContentTypeEncoding::QuotedPrintable => "quoted-printable",
             ContentTypeEncoding::IetfToken => "ietf-token",
             ContentTypeEncoding::XToken => "x-token",
-        }
+        };
+        format!("Content-Type-Encoding: {}", encode)
     }
 }
 
@@ -108,6 +109,6 @@ impl<'a, T: Into<&'a str>> From<T> for ContentType {
 
 impl Into<String> for ContentType {
     fn into(self) -> String {
-        format!("{}/{}{}", self._type, self.sub_type, self.parameters.join(";"))
+        format!("Content-Type: {}/{}{}", self._type, self.sub_type, self.parameters.join(";"))
     }
 }

@@ -34,9 +34,14 @@ pub trait SMTPCommand {
 
 impl<C> StreamWrite for C where C: SMTPCommand {
     fn write_to<T: Write>(&self, stream: &mut T) -> io::Result<()> {
-        match self.params() {
-            Some(params) => stream.write_fmt(format_args!("{} {}{}", self.command(), params, CRLF))?,
-            None => stream.write_fmt(format_args!("{}{}", self.command(), CRLF))?
+        match self.command() {
+            "" => (),
+            command => {
+                match self.params() {
+                    Some(params) => stream.write_fmt(format_args!("{} {}{}", command, params, CRLF))?,
+                    None => stream.write_fmt(format_args!("{}{}", command, CRLF))?
+                }
+            }
         }
         self.additional_data(stream)?;
         Ok(())

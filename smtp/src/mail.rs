@@ -29,7 +29,7 @@ impl MailData {
         for (key, value) in &self.header {
             size += key.as_bytes().len() + 2 + key.as_bytes().len() + 2;
         }
-        size += 2 + self.body.len();
+        size += 4 + self.body.len();
         size
     }
 }
@@ -45,6 +45,7 @@ impl Into<Bytes> for MailData {
             buf.extend_from_slice(b"\r\n");
         }
 
+        buf.extend_from_slice(b"\r\n");
         buf.extend_from_slice(b"\r\n");
         buf.extend_from_slice(&self.body);
 
@@ -107,11 +108,17 @@ impl MailBuilder {
         self
     }
     pub fn build(mut self) -> MailData {
-        self.data.set_header("To", self.to.into_mail_list());
-        self.data.set_header("Cc", self.cc.into_mail_list());
-        self.data.set_header("Bcc", self.bc.into_mail_list());
-        self.data.set_header("Date", Utc::now().to_rfc2822());
-        self.data.set_header("Content-Type", format!{r#"multipart/mixed; boundary="{}""#, self.boundary});
+        if self.to.len() > 0 {
+            self.data.set_header("To", self.to.into_mail_list());
+        }
+        if self.cc.len() > 0 {
+            self.data.set_header("Cc", self.cc.into_mail_list());
+        }
+        if self.bc.len() > 0 {
+            self.data.set_header("Bcc", self.bc.into_mail_list());
+        }
+        self.data.set_header("Date", chrono::Local::now().to_rfc2822());
+        self.data.set_header("Content-Type", format!{r#"multipart/mixed; boundary={}"#, self.boundary});
 
         let boundary_delimiter = format!("--{}\r\n", self.boundary);
         let body_terminator = format!("--{}--\r\n", self.boundary);
@@ -145,6 +152,15 @@ impl<T: Into<String>, U: Into<String>> Into<MailBox> for (T, U) {
         MailBox {
             display_name: Some(display_name.into()),
             address: address.into()
+        }
+    }
+}
+
+impl Into<MailBox> for &str {
+    fn into(self) -> MailBox {
+        MailBox {
+            display_name: None,
+            address: self.to_string()
         }
     }
 }
