@@ -8,8 +8,8 @@ use crate::{mail::MailBox, smtp::StreamWrite, utils::{smtp_data_transparency, sp
 pub enum Command {
     EHLO(String),
     HELO(String),
-    MAIL(MailBox),
-    RCPT(MailBox),
+    MAIL(String),
+    RCPT(String),
     DATABegin,
     DATAContent(Bytes),
     RSET,
@@ -63,9 +63,8 @@ impl SMTPCommand for Command {
         match self {
             Command::EHLO(domain) => Some(domain.clone()),
             Command::HELO(domain) => Some(domain.clone()),
-            Command::MAIL(reverse_path) => Some(format!("FROM:<{}>", Into::<String>::into(reverse_path.clone()))),
-            Command::RCPT(forward_path) => Some(format!("TO:<{}>", Into::<String>::into(forward_path.clone()))),
-            Command::DATAContent(data) => Some("DATA".to_string()),
+            Command::MAIL(reverse_path) => Some(format!("FROM:<{}>", reverse_path.clone())),
+            Command::RCPT(forward_path) => Some(format!("TO:<{}>", forward_path.clone())),
             Command::VRFY(name) => Some(name.clone()),
             _ => None,
         }
@@ -73,16 +72,15 @@ impl SMTPCommand for Command {
 
     fn additional_data<W: Write>(&self, stream: &mut W) -> io::Result<()> {
         if let Command::DATAContent(data) = self {
-            stream.write_fmt(format_args!("DATA{}", CRLF))?;
-                let lines = split_buffer_crlf(data);
-                for line in lines {
-                    if smtp_data_transparency(line) {
-                        stream.write_all(".".as_bytes())?;
-                    }
-                    stream.write_all(line)?;
+            let lines = split_buffer_crlf(data);
+            for line in lines {
+                if smtp_data_transparency(line) {
+                    stream.write_all(".".as_bytes())?;
                 }
-                stream.write_all(TERMINATOR)?;
-                Ok(())
+                stream.write_all(line)?;
+            }
+            stream.write_all(TERMINATOR)?;
+            Ok(())
         } else {
             Ok(())
         }

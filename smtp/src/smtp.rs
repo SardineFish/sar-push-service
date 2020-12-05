@@ -82,14 +82,14 @@ impl SMTPClient<TcpStream> {
     pub fn auth(&mut self, auth: AuthCommand) -> SMTPResult<&mut Self> {
         let mut auth_ext: Auth<TcpStream> = self.0.new_extension()
             .ok_or(SMTPError::ExtensionNotSupported(Auth::<TcpStream>::name().to_string()))?;
-        auth_ext.send_auth(auth);
+        auth_ext.send_auth(auth)?;
         Ok(self)
     }
-    pub fn send<F: Into<MailBox>, T: Into<MailBox>, D: Into<Bytes>>(&mut self, mail_from: F, rcpt_to: T, data: D) -> SMTPResult<&mut Self> {
+    pub fn send<F: Into<String>, T: Into<String>, D: Into<Bytes>>(&mut self, mail_from: F, rcpt_to: T, data: D) -> SMTPResult<&mut Self> {
         self.0.send_command(Command::RSET)?.expect_code(250)?;
         self.0.send_command(Command::MAIL(mail_from.into()))?.expect_code(250)?;
         self.0.send_command(Command::RCPT(rcpt_to.into()))?.expect_code(250)?;
-        self.0.send_command(Command::DATABegin)?.expect_code(250)?;
+        self.0.send_command(Command::DATABegin)?.expect_code(354)?;
         self.0.send_command(Command::DATAContent(data.into()))?.expect_code(250)?;
         
         Ok(self)

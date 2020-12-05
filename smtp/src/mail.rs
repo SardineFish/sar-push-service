@@ -6,7 +6,7 @@ use bytes::Bytes;
 
 // https://tools.ietf.org/html/rfc2822
 
-struct MailData {
+pub struct MailData {
     header: HashMap<String, String>,
     body: Bytes,
 }
@@ -24,9 +24,35 @@ impl MailData {
     pub fn set_header<K: Into<String>, V: Into<String>>(&mut self, key: K, value: V) {
         self.header.insert(key.into(), value.into());
     }
+    fn eval_size(&self) -> usize {
+        let mut size = 0;
+        for (key, value) in &self.header {
+            size += key.as_bytes().len() + 2 + key.as_bytes().len() + 2;
+        }
+        size += 2 + self.body.len();
+        size
+    }
 }
 
-struct MailBuilder {
+impl Into<Bytes> for MailData {
+    fn into(self) -> Bytes {
+        let mut buf = Vec::with_capacity(self.eval_size());
+
+        for (key, value) in self.header {
+            buf.extend_from_slice(key.as_bytes());
+            buf.extend_from_slice(b": ");
+            buf.extend_from_slice(value.as_bytes());
+            buf.extend_from_slice(b"\r\n");
+        }
+
+        buf.extend_from_slice(b"\r\n");
+        buf.extend_from_slice(&self.body);
+
+        Bytes::from(buf)
+    }
+}
+
+pub struct MailBuilder {
     data: MailData,
     to: Vec<MailBox>,
     cc: Vec<MailBox>,
@@ -109,15 +135,25 @@ impl MailBuilder {
 
 #[derive(Clone)]
 pub struct MailBox {
-    local_part: Option<String>,
-    domain: String,
+    display_name: Option<String>,
+    address: String,
+}
+
+impl<T: Into<String>, U: Into<String>> Into<MailBox> for (T, U) {
+    fn into(self) -> MailBox {
+        let (display_name, address) = self;
+        MailBox {
+            display_name: Some(display_name.into()),
+            address: address.into()
+        }
+    }
 }
 
 impl Into<String> for MailBox {
     fn into(self) -> String {
-        match self.local_part {
-            Some(name) => format!(r#""{}" <{}>"#, name, self.domain),
-            None => format!("<{}>", self.domain)
+        match self.display_name {
+            Some(name) => format!(r#""{}" <{}>"#, name, self.address),
+            None => format!("<{}>", self.address)
         }
     }
 }

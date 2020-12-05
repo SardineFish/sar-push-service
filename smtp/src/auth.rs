@@ -71,7 +71,7 @@ impl SMTPCommand for AuthCommand {
             AuthCommand::Plain(authzid, authcid, passwd) => {
                 let authzid: &str = authzid.as_ref().map(|s|s.as_str()).unwrap_or("");
                 let params = format!("{}\0{}\0{}", authzid, authcid, passwd);
-                Some(base64::encode(params))
+                Some(format!("PLAIN {}", base64::encode(params)))
             }
         }
     }

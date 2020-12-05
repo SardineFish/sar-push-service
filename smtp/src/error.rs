@@ -2,6 +2,7 @@ use std::{io, str::Utf8Error};
 
 use crate::reply::{ParseError, Reply};
 
+#[derive(Debug)]
 pub enum Error {
     IOError(io::Error),
     ParseError(ParseError),

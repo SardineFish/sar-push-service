@@ -15,8 +15,9 @@ impl MIMEBody {
             body: Bytes::new(),
         }
     }
-    pub fn text<'s, T: Into<&'s str>>(&mut self, text: T) {
+    pub fn text<'s, T: Into<&'s str>>(mut self, text: T) -> Self {
         self.body = Bytes::from(Into::<&'s str>::into(text).to_string());
+        self
     }
     pub fn copy_from_slice(&mut self, data: &[u8]) {
         self.body = Bytes::copy_from_slice(data);
