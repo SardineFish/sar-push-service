@@ -21,8 +21,10 @@ const TERMINATOR: &[u8] = b"\r\n.\r\n";
 
 pub trait SMTPCommand {
     fn command(&self) -> &'static str;
-    fn params(&self) -> Option<String>;
-    fn additional_data<W: Write>(&self, stream: &mut W) -> io::Result<()>{
+    fn params(&self) -> Option<String> {
+        None
+    }
+    fn additional_data<W: Write>(&self, _stream: &mut W) -> io::Result<()>{
         Ok(())
     }
 }

@@ -5,7 +5,7 @@ use std::{num::ParseIntError, io::{self, Read}, ops::Range, str};
 
 #[derive(Debug, Default)]
 pub struct Reply {
-    pub code: u8,
+    pub code: u16,
     pub text_lines: Vec<String>,
 }
 
@@ -52,7 +52,7 @@ enum ReplyParser<'buf> {
     ReadCR(LineState, &'buf mut [u8]),
     ReadLine(LineState, &'buf mut [u8]),
     EndOfLine(LineState, &'buf mut [u8]),
-    ReadCode(u8, &'buf mut [u8]),
+    ReadCode(u16, &'buf mut [u8]),
 }
 
 impl<'buf> ReplyParser<'buf> {
@@ -88,7 +88,7 @@ impl<'buf> ReplyParser<'buf> {
             ReplyParser::StartNewLine(buf) => {
                 let sub_buf = &mut buf[..3];
                 stream.read_exact(sub_buf).map_err(ParseError::from)?;
-                let code: u8 = str::from_utf8(sub_buf).map_err(ParseError::from)?
+                let code: u16 = str::from_utf8(sub_buf).map_err(ParseError::from)?
                     .parse().map_err(ParseError::from)?;
                 Ok(ReplyParser::ReadCode(code, &mut buf[3..]))
             },
