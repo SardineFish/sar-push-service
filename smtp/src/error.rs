@@ -1,7 +1,8 @@
-use std::{io, str::Utf8Error};
+use std::{io};
 
 use crate::reply::{ParseError, Reply};
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Error {
     IOError(io::Error),

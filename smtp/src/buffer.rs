@@ -1,10 +1,11 @@
-use std::{ops::{Deref, DerefMut, Index, Range, RangeFrom, RangeTo}, slice::SliceIndex};
+use std::{ops::{Deref, DerefMut, Range, RangeFrom, RangeTo}};
 
 pub struct Buffer{
     buf: Vec<u8>,
     range: Range<usize>,
 }
 
+#[allow(dead_code)]
 impl Buffer {
     pub fn new(size: usize) -> Self {
         Buffer {

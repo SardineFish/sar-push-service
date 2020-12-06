@@ -1,8 +1,8 @@
-use std::{collections::HashMap, net::ToSocketAddrs, io::{self, Read, Write}, net::TcpStream};
+use std::{collections::HashMap, io::{self, Read, Write}, net::TcpStream};
 
 use bytes::Bytes;
 
-use crate::{auth::{Auth, AuthCommand}, command::{Command, SMTPCommand}, extension::Extension, mail::MailBox, reply::Reply};
+use crate::{auth::{Auth, AuthCommand}, command::{Command, SMTPCommand}, extension::Extension, reply::Reply};
 use super::error::{Error as SMTPError, Result as SMTPResult};
 
 pub struct SMTPInner<S: Stream> {
@@ -86,7 +86,7 @@ impl SMTPClient<TcpStream> {
         Ok(self)
     }
     pub fn send<F: Into<String>, T: Into<String>, D: Into<Bytes>>(&mut self, mail_from: F, rcpt_to: T, data: D) -> SMTPResult<&mut Self> {
-        // self.0.send_command(Command::RSET)?.expect_code(250)?;
+        self.0.send_command(Command::RSET)?.expect_code(250)?;
         self.0.send_command(Command::MAIL(mail_from.into()))?.expect_code(250)?;
         self.0.send_command(Command::RCPT(rcpt_to.into()))?.expect_code(250)?;
         self.0.send_command(Command::DATABegin)?.expect_code(354)?;
@@ -96,7 +96,7 @@ impl SMTPClient<TcpStream> {
     }
 }
 
-struct Endpoint {
+pub struct Endpoint {
     host: String,
     port: u16,
 }

@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use chrono::Utc;
-use uuid::{Uuid};
 
 use bytes::Bytes;
 
@@ -27,7 +25,7 @@ impl MailData {
     fn eval_size(&self) -> usize {
         let mut size = 0;
         for (key, value) in &self.header {
-            size += key.as_bytes().len() + 2 + key.as_bytes().len() + 2;
+            size += key.as_bytes().len() + 2 + value.as_bytes().len() + 2;
         }
         size += 4 + self.body.len();
         size

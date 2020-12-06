@@ -1,10 +1,10 @@
-use std::{rc::Rc, io::{self, Write, Read}};
-use std::net::TcpStream;
+use std::{io::{self, Write}};
 
 use bytes::Bytes;
 
-use crate::{mail::MailBox, smtp::StreamWrite, utils::{smtp_data_transparency, split_buffer_crlf}};
+use crate::{smtp::StreamWrite, utils::{smtp_data_transparency, split_buffer_crlf}};
 
+#[allow(dead_code)]
 pub enum Command {
     EHLO(String),
     HELO(String),

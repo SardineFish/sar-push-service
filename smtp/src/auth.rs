@@ -1,5 +1,3 @@
-use std::io::{Write, Read};
-
 use crate::{command::SMTPCommand, error::{Result, Error}, extension::Extension, smtp::{SMTPInner, Stream}};
 use base64;
 
