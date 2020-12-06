@@ -118,6 +118,16 @@ async fn test_service_creation() {
         .await;
     });
 
+    test_case!("Add duplicated service profile should be conflict", async {
+        request_add_service(&mut app, &root, &admin.uid, &model::Service::ServiceManagement(ServiceManagerProfile {
+            access: Access::Admin
+        }))
+        .await
+        .expect_status(StatusCode::CONFLICT)
+        .expect_error_data()
+        .await;
+    });
+
     test_case!("Add invalid service for user should be bad request", async {
         TestRequest::post()
         .uri(&format!("/service/profile/{}", &admin.uid))

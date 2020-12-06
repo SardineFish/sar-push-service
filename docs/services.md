@@ -94,7 +94,11 @@ The profile data scheme should match the corresponding service.
 The service profile can be partially updated. Fill the profile with fields to change and leave other fields with `null`. The data scheme should match the corresponding service.
 ```json
 {
-    // The profile content of the service to change...
+    "type": "Type of the Service",
+    "profile": {
+        "_": "// The profile content of the service to change..."
+    }
+    
 }
 ```
 
@@ -105,13 +109,16 @@ If success, the updated service profile will be return.
     "service_id": "<The service profile ID>",
     "service": {
         "type": "<The Type name of the service>",
-        "profile": { /* ... */ }
+        "profile": { 
+            "_": "// The profile content of the service..."
+        }
     }
 },
 ```
 
 ### Errors
 - If the user or service not exists, an error with status code `404` will be responsed. 
+- If the `type` field missmatch the original service, an error with code `400` will be responsed.
 - If the data not match the scheme of specific service profile, an error `400` will be responsed.
 
 ----------------
@@ -132,7 +139,9 @@ No request data required.
     "service_id": "<The service profile ID>",
     "service": {
         "type": "<The Type name of the service>",
-        "profile": { /* ... */ }
+        "profile": { 
+            "_": "// The profile content of the service..."
+        }
     }
 },
 ```
