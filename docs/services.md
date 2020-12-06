@@ -12,7 +12,7 @@ All request in this service without a permission will get a `403` response with 
 **Here is the service profile data scheme for the **Service Profile Management** service.*
 ```json
 {
-    "access": "<ServiceAdmin | Root>"
+    "access": "<User | Admin | Root>"
 }
 ```
 
@@ -21,7 +21,7 @@ All request in this service without a permission will get a `403` response with 
 ## List services profile of a given user
 `GET /service/profile/{uid}`
 
-Normally, a user can list the services profile of himself. Only the user with access of `ServiceAdmin` can list profiles of other users.
+Normally, a user can list the services profile of himself. Only the user with access of `Admin` can list profiles of other users.
 
 ### Request
 No data required.
@@ -58,7 +58,7 @@ If the user not exists, an error with status code `404` will be responsed.
 ## Add service profile
 `POST /service/profile/{uid}`
 
-Only user with access of `ServiceAdmin` are permit to add service profiles to any other user.
+Only user with access of `Admin` are permit to add service profiles to any other user.
 
 ### Request
 The profile data scheme should match the corresponding service.
@@ -126,7 +126,7 @@ If success, the updated service profile will be return.
 ## Remove a service from user
 `DELETE /service/profile/{uid}/{service_id}`
 
-Only the user with access of `ServiceAdmin` can delete services profile of any users.
+Only the user with access of `Admin` can delete services profile of any users.
 
 ### Request
 No request data required.

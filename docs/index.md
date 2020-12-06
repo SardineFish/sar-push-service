@@ -11,6 +11,8 @@
 
 All requests to the API require authorization with HTTP basic authentication. With the `uid` as the username and `secret` as password.
 
+Unauthorized requests will get error response with status `401 Unauthorized`.
+
 ### Example in JS
 
 ```js
