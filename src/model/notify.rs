@@ -78,6 +78,23 @@ impl Model {
 
         Ok(notifications)
     }
+    
+    pub async fn get_pending_notifications(&self)  -> Result<Vec<EmailNotify>, Error> {
+        let coll = self.db.collection(COLLECTION_NOTIFY);
+        let query = doc! {
+            "status": bson::to_bson(&NotifyState::Pending).unwrap(),
+        };
+        let result = coll.find(query, None)
+            .await
+            .map_err(mongo_error)?;
+            
+        let notifications: Vec<EmailNotify> = result
+            .filter_map(|doc| doc.ok().and_then(|d| bson::from_document(d).ok()))
+            .collect()
+            .await;
+
+        Ok(notifications)
+    }
 
     pub async fn get_notification_by_message_id(&self, message_id: &ObjectId) -> Result<EmailNotify, Error> {
         let coll = self.db.collection(COLLECTION_NOTIFY);

@@ -1,4 +1,4 @@
-use actix_web::{web::Query, Result, error as web_errors, get, post, web::Data, web::Json, web::ServiceConfig};
+use actix_web::{web::Path, Result, error as web_errors, get, post, web::Data, web::Json, web::ServiceConfig};
 use model::MailData;
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
@@ -92,6 +92,8 @@ async fn queue(
         .iter()
         .find(|s| NotifyProfile::extract_from(&s.service).is_some());
 
+    log::debug!("Received request.");
+
     if let Some(record) = record {
         let service_id = record._id.clone();
 
@@ -111,7 +113,7 @@ async fn queue(
 }
 
 #[get("/{message_id}")]
-async fn query_status(message_id: Query<String>, model: Model) -> Result<Json<PubNotifyInfo>> {
+async fn query_status(Path(message_id): Path<String>, model: Model) -> Result<Json<PubNotifyInfo>> {
     let message_id = ObjectId::with_string(message_id.as_str())
         .map_err(|_| web_errors::ErrorNotFound("Notification not found"))?;
     let notify = model.get_notification_by_message_id(&message_id)

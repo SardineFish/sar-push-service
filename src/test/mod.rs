@@ -2,15 +2,17 @@ mod helper;
 mod test_access_service;
 mod test_auth;
 mod test_service;
+mod test_notify;
 
 use actix_web::{App, dev::{MessageBody, ServiceRequest, ServiceResponse}, middleware::Logger, test, web::Json};
 use actix_http::Request;
+use env_logger::Env;
 use futures::executor::block_on;
 use mongodb::bson::oid::ObjectId;
 use std::{time::Duration, thread::spawn};
 use actix_rt::time;
 
-use crate::{controller, middleware, model::ServiceRecord, model::{AccessManagerProfile, Model, Service, ServiceManagerProfile, Access, UserProfile}};
+use crate::{service::EmailNotifyService, controller, middleware, model::ServiceRecord, model::{AccessManagerProfile, Model, Service, ServiceManagerProfile, Access, UserProfile}};
 
 const TEST_ADDR: &str = "localhost:3000";
 const TEST_ROOT_UID: &str = "test-root";
@@ -20,10 +22,14 @@ const TEST_ROOT_SECRET: &str = "TEST_SECRET";
 type AppType = impl actix_web::dev::Service<Request = Request, Response= ServiceResponse, Error = actix_web::Error>;
 
 async fn config_app() -> AppType {
+    // env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
+    
     let model = Model::new().await.unwrap();
+    let notify_service = EmailNotifyService::new(model.clone(), Duration::from_millis(100));
     test::init_service(
     App::new()
             .data(model.clone())
+            .data(notify_service.clone())
             .wrap(middleware::authentication())
             .wrap(middleware::error_formatter())
             .configure(controller::config)

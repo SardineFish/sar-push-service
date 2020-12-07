@@ -1,12 +1,7 @@
 use model::{NotifyProfile, NotifyState, Service};
 use mongodb::bson::oid::ObjectId;
 use smtp::{mail::MailData, AuthCommand, Error as SMTPError, MIMEBody, MailBuilder, SMTPClient};
-use std::{
-    collections::VecDeque,
-    fmt,
-    sync::mpsc::{channel, Receiver, SendError, Sender},
-    thread::spawn,
-};
+use std::{net::SocketAddr, collections::VecDeque, fmt, sync::mpsc::{channel, Receiver, SendError, Sender}, thread::spawn, time::Duration};
 
 use crate::model::{self, EmailNotify, Model};
 
@@ -51,28 +46,23 @@ impl fmt::Display for Error {
     }
 }
 
-pub struct MailSender {
-    pub smtp_address: String,
-    pub tls: bool,
-    pub authuid: String,
-    pub passwd: String,
-}
-
 #[derive(Clone)]
 pub struct EmailNotifyService {
-    model: Model,
     mail_sender: Sender<()>,
 }
 
 impl EmailNotifyService {
-    pub fn new(model: Model) -> Self {
+    pub fn new(model: Model, timeout: Duration) -> Self {
         let (sender, receiver) = channel::<()>();
-        let model_cloned = model.clone();
 
-        spawn(move || Self::notify_loop(receiver, model_cloned));
+        let service = PushService {
+            timeout,
+            model,
+            notify_receiver: receiver,
+        };
+        spawn(move || service.start());
 
         Self {
-            model: model,
             mail_sender: sender,
         }
     }
@@ -80,6 +70,105 @@ impl EmailNotifyService {
     pub fn enqueue(&self) -> Result<(), SendError<()>> {
         self.mail_sender.send(())
     }
+
+    
+}
+
+
+struct PushService {
+    timeout: Duration,
+    model: Model,
+    notify_receiver: Receiver<()>,
+}
+
+impl PushService {
+    
+    fn start(&self) {
+        let mut rt = tokio::runtime::Builder::new()
+            .threaded_scheduler()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        rt.block_on(async move {
+            log::info!("Email notify serice up");
+            log::debug!("Start processing existed notifications");
+            if let Err(err) = self.dequeue_notify().await {
+                log::error!("{:?}", err);
+            }
+
+            loop {
+                log::debug!("Waiting for notify");
+                if let Err(_) = self.notify_receiver.recv() {
+                    log::info!("Shutting down notify service");
+                    break;
+                }
+
+                log::debug!("Start sending notification");
+                if let Err(err) = self.dequeue_notify().await {
+                    log::error!("{:?}", err);
+                }
+            }
+        });
+    }
+    
+    async fn dequeue_notify(&self) -> Result<(), Error> {
+        let notifications = self.model.get_pending_notifications().await.map_err(Error::from)?;
+        
+        let iter = notifications
+            .into_iter()
+            .filter(|n| n.status == NotifyState::Pending);
+
+        for mut notify in iter {
+
+            let result = self.try_send_notify(&notify).await;
+
+            notify.status = match result {
+                Ok(_) => {
+                    log::debug!("Notification email sent");
+                    NotifyState::Sent
+                },
+                Err(err) => {
+                    log::warn!("Failed to send an email notify {:?}", err);
+                    NotifyState::Error(format!("{}", err), format!("{:?}", err))
+                }
+            };
+
+            self.model
+                .update_notification(&notify)
+                .await
+                .map_err(Error::from)?;
+            
+            log::debug!("Notification updated");
+        }
+
+        Ok(())
+    }
+
+    async fn try_send_notify(&self, notify: &EmailNotify) -> Result<(), Error> {
+        log::debug!("Try sending notification to {}", &notify.mail.to);
+        let service_profile = self.model
+            .get_service_by_id(&notify.sender_profile)
+            .await
+            .map_err(|err| match err {
+                model::Error::NoRecord => Error::MissingServiceProfile,
+                err => err.into(),
+            })?;
+
+        let result = match service_profile {
+            Service::EmailNotify(service_profile) if service_profile.tls => {
+                self.send_notify_tls(&notify, &service_profile)
+            }
+            Service::EmailNotify(service_profile) => {
+                self.send_notify(&notify, &service_profile)
+            }
+            _ => Err(Error::MissingServiceProfile),
+        };
+
+        result
+    }
+
+    
 
     fn build_mail(notify: &EmailNotify, profile: &NotifyProfile) -> MailData {
         let content = MIMEBody::new(&notify.mail.content_type).text(&notify.mail.body);
@@ -95,10 +184,12 @@ impl EmailNotifyService {
         mail
     }
 
-    fn send_notify(notify: &EmailNotify, profile: &NotifyProfile) -> Result<(), Error> {
+    fn send_notify(&self, notify: &EmailNotify, profile: &NotifyProfile) -> Result<(), Error> {
         let mail = Self::build_mail(&notify, &profile);
 
-        let _client = SMTPClient::connect(&profile.smtp_address)
+        let _client = SMTPClient::connect_timeout(&profile.smtp_address, self.timeout)
+            .map_err(|err| Error::ConnectFailed(err))?
+            .set_timeout(Some(self.timeout))
             .map_err(|err| Error::ConnectFailed(err))?
             .auth(AuthCommand::Plain(
                 None,
@@ -114,68 +205,7 @@ impl EmailNotifyService {
         Ok(())
     }
 
-    fn send_notify_tls(notify: &EmailNotify, service_profile: &NotifyProfile) -> Result<(), Error> {
+    fn send_notify_tls(&self, notify: &EmailNotify, service_profile: &NotifyProfile) -> Result<(), Error> {
         Ok(())
-    }
-
-    async fn dequeue_notify(model: &Model) -> Result<(), Error> {
-        let notifications = model.get_all_notifications().await.map_err(Error::from)?;
-
-        let notify = notifications
-            .into_iter()
-            .find(|n| n.status == NotifyState::Pending);
-
-        if let Some(notify) = notify {
-            let service_profile = model
-                .get_service_by_id(&notify.sender_profile)
-                .await
-                .map_err(|err| match err {
-                    model::Error::NoRecord => Error::MissingServiceProfile,
-                    err => err.into(),
-                })?;
-
-            let result = match service_profile {
-                Service::EmailNotify(service_profile) if service_profile.tls => {
-                    Self::send_notify_tls(&notify, &service_profile)
-                }
-                Service::EmailNotify(service_profile) => {
-                    Self::send_notify(&notify, &service_profile)
-                }
-                _ => Err(Error::MissingServiceProfile),
-            };
-
-            let mut notify = notify;
-            notify.status = match result {
-                Ok(_) => NotifyState::Sent,
-                Err(err) => {
-                    log::warn!("Failed to send an email notify {:?}", err);
-                    NotifyState::Error(format!("{}", err), format!("{:?}", err))
-                }
-            };
-
-            model
-                .update_notification(&notify)
-                .await
-                .map_err(Error::from)?;
-
-            Ok(())
-        } else {
-            Ok(())
-        }
-    }
-
-    fn notify_loop(receiver: Receiver<()>, model: Model) {
-        let mut rt = actix_web::rt::Runtime::new().unwrap();
-        rt.block_on(async move {
-            loop {
-                if let Err(_) = receiver.recv() {
-                    break;
-                }
-
-                if let Err(err) = Self::dequeue_notify(&model).await {
-                    log::error!("{:?}", err);
-                }
-            }
-        });
     }
 }

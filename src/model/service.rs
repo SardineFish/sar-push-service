@@ -120,8 +120,9 @@ impl Model {
     pub async fn get_service_by_id(&self, service_id: &ObjectId) -> Result<Service, Error> {
         let coll = self.db.collection(COLLECTION_PROFILE);
         let query = doc! {
-            "services._id": service_id,
+            "services._id": service_id.clone(),
         };
+        // log::debug!("{:?}", service_id);
         let result = coll.find_one(query, None)
             .await
             .map_err(Error::from)?

@@ -21,6 +21,8 @@ mod utils;
 #[cfg(test)]
 mod test;
 
+use std::time::Duration;
+
 use actix_web::{App, HttpServer, dev::Server, middleware::Logger};
 use env_logger::Env;
 use model::Model;
@@ -35,7 +37,7 @@ async fn start_server(addr: &str) -> std::io::Result<Server> {
         .get_matches();
 
     let model = Model::new().await.unwrap();
-    let notify_service = EmailNotifyService::new(model.clone());
+    let notify_service = EmailNotifyService::new(model.clone(), Duration::from_secs(5));
 
     if matches.is_present("init") {
         model.init_db().await.unwrap();
@@ -57,7 +59,7 @@ async fn start_server(addr: &str) -> std::io::Result<Server> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
  
     start_server("localhost:5000").await?.await
 }

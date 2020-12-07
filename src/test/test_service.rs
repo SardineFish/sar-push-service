@@ -23,7 +23,7 @@ async fn request_get_service(app: &mut AppType, auth: &UserAuth, uid: &str) -> S
         .await
 }
 
-async fn request_add_service(app: &mut AppType, auth: &UserAuth, uid: &str, service: &model::Service) -> ServiceResponse {
+pub async fn request_add_service(app: &mut AppType, auth: &UserAuth, uid: &str, service: &model::Service) -> ServiceResponse {
     TestRequest::post()
         .uri(&format!("/service/profile/{}", uid))
         .auth(&auth.uid, &auth.secret)
