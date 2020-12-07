@@ -228,7 +228,7 @@ async fn test_user_creation() {
             .send_request(&mut app)
             .await
             .expect_status(StatusCode::BAD_REQUEST)
-            .expect_empty()
+            .expect_error_data()
             .await;
     });
 

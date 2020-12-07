@@ -113,14 +113,19 @@ async fn queue(
 }
 
 #[get("/{message_id}")]
-async fn query_status(Path(message_id): Path<String>, model: Model) -> Result<Json<PubNotifyInfo>> {
+async fn query_status(Path(message_id): Path<String>, auth: Auth, model: Model) -> Result<Json<PubNotifyInfo>> {
     let message_id = ObjectId::with_string(message_id.as_str())
         .map_err(|_| web_errors::ErrorNotFound("Notification not found"))?;
     let notify = model.get_notification_by_message_id(&message_id)
         .await
         .map_err(handel_model_error)?;
+    
+    if !auth.services.iter().any(|s| s._id == notify.sender_profile) {
+        Err(web_errors::ErrorForbidden(ERR_ACCESS_DENIED))
+    } else {
+        Ok(Json(PubNotifyInfo::from(notify)))
+    }
 
-    Ok(Json(PubNotifyInfo::from(notify)))
 }
 
 pub fn config(cfg: &mut ServiceConfig) {

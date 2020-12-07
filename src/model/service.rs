@@ -118,6 +118,15 @@ impl Model {
     }
 
     pub async fn get_service_by_id(&self, service_id: &ObjectId) -> Result<Service, Error> {
+        let profile = self.get_service_owner(service_id).await?;
+        let service = profile.services.into_iter()
+            .find(|s| &s._id == service_id)
+            .ok_or(Error::NoRecord)?;
+
+        Ok(service.service)
+    }
+
+    pub async fn get_service_owner(&self, service_id: &ObjectId) -> Result<UserProfile, Error> {
         let coll = self.db.collection(COLLECTION_PROFILE);
         let query = doc! {
             "services._id": service_id.clone(),
@@ -129,10 +138,7 @@ impl Model {
             .ok_or(Error::NoRecord)?;
         
         let profile: UserProfile = bson::from_document(result).map_err(Error::from)?;
-        let service = profile.services.into_iter()
-            .find(|s| &s._id == service_id)
-            .ok_or(Error::NoRecord)?;
 
-        Ok(service.service)
+        Ok(profile)
     }
 }

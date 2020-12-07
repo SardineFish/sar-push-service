@@ -140,7 +140,7 @@ async fn test_service_creation() {
         .send_request(&mut app)
         .await
         .expect_status(StatusCode::BAD_REQUEST)
-        .expect_empty()
+        .expect_error_data()
         .await;
     });
 
@@ -256,7 +256,7 @@ async fn test_service_update()
         .send_request(&mut app)
         .await
         .expect_status(StatusCode::BAD_REQUEST)
-        .expect_empty()
+        .expect_error_data()
         .await;
     });
 

@@ -17,6 +17,11 @@ struct ErrorMessage {
 }
 
 impl ErrorMessage {
+    pub fn from_string<T: Into<String>>(str: T) -> Self {
+        ErrorMessage {
+            error: str.into()
+        }
+    }
     pub fn from_bytes(bytes: Bytes)-> Self {
         let msg = std::str::from_utf8(&bytes).unwrap();
         ErrorMessage {
@@ -83,9 +88,10 @@ where
                         let json = ErrorMessage::from_bytes(bytes).into_json();
                         ResponseBody::Other(Body::Bytes(Bytes::from(json)))
                     }
-                    other_body => {
+                    _ => {
                         warn!("Unkown error response body");
-                        other_body
+                        let json = ErrorMessage::from_string("").into_json();
+                        ResponseBody::Body(Body::Bytes(Bytes::from(json)))
                     }
                 });
                 Ok(result)

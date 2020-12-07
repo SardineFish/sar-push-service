@@ -55,6 +55,7 @@ async fn test_notify() {
     let root = make_root_access();
 
     let admin = add_user(&mut app, &root, &UserInfo::new_for_test(Access::Admin)).await;
+    let another_admin = add_user(&mut app, &root, &UserInfo::new_for_test(Access::Admin)).await;
 
     let notify_request = NotifyRequest {
         to: "test@sardinefish.com".to_string(),
@@ -72,6 +73,17 @@ async fn test_notify() {
 
     test_case!("Add service profile to lower level user should be ok", async {
         request_add_service(&mut app, &root, &admin.uid, &Service::EmailNotify(NotifyProfile {
+            smtp_address: "192.0.2.1".to_string(),
+            tls: false,
+            name: "Display Name".to_string(),
+            username: "user@example.com".to_string(),
+            password: "password".to_string(),
+            email_address: "user@example.com".to_string(),
+        }))
+        .await
+        .expect_status(StatusCode::OK);
+
+        request_add_service(&mut app, &root, &another_admin.uid, &Service::EmailNotify(NotifyProfile {
             smtp_address: "192.0.2.1".to_string(),
             tls: false,
             name: "Display Name".to_string(),
@@ -113,5 +125,30 @@ async fn test_notify() {
         assert_eq!(result.error.unwrap(), "Cannot connect to SMTP Server"); 
     });
 
-    cleanup(app, root, vec![admin]).await;
+    test_case!("Query other's notification should be forbidden", async {
+        query_notification(&mut app, &another_admin, &notify.message_id)
+        .await
+        .expect_status(StatusCode::FORBIDDEN)
+        .expect_error_data()
+        .await;
+    });
+
+    test_case!("Send invalid notification should be bad request", async {
+        TestRequest::post()
+        .uri("/notify/queue")
+        .auth(&admin.uid, &admin.secret)
+        .header("Content-Type", "application/json")
+        .set_payload(r#"{
+            "from": "<Unknown user>",
+            "cc": "cc@example.com",
+            "content_type": "plain/text",
+        }"#)
+        .send_request(&mut app)
+        .await
+        .expect_status(StatusCode::BAD_REQUEST)
+        .expect_error_data()
+        .await;
+    });
+
+    cleanup(app, root, vec![admin, another_admin]).await;
 }
