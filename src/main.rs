@@ -9,10 +9,12 @@ extern crate futures_util;
 extern crate log;
 extern crate clap;
 extern crate actix_web_httpauth;
+extern crate smtp;
 
 mod controller;
 mod middleware;
 mod model;
+mod service;
 #[allow(dead_code)]
 mod utils;
 
@@ -22,6 +24,7 @@ mod test;
 use actix_web::{App, HttpServer, dev::Server, middleware::Logger};
 use env_logger::Env;
 use model::Model;
+use service::EmailNotifyService;
 
 async fn start_server(addr: &str) -> std::io::Result<Server> {
     let matches = clap::App::new("Sar Push Service")
@@ -32,6 +35,7 @@ async fn start_server(addr: &str) -> std::io::Result<Server> {
         .get_matches();
 
     let model = Model::new().await.unwrap();
+    let notify_service = EmailNotifyService::new(model.clone());
 
     if matches.is_present("init") {
         model.init_db().await.unwrap();
@@ -40,6 +44,7 @@ async fn start_server(addr: &str) -> std::io::Result<Server> {
     let server = HttpServer::new(move || {
         App::new()
             .data(model.clone())
+            .data(notify_service.clone())
             .wrap(middleware::authentication())
             .wrap(middleware::error_formatter())
             .wrap(Logger::default())

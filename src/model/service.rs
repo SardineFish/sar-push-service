@@ -6,6 +6,7 @@ use super::{
     profile::*,
 };
 
+use bson::oid::ObjectId;
 use mongodb::{
     bson::{
         self,
@@ -114,5 +115,23 @@ impl Model {
         } else {
             Ok(())
         }
+    }
+
+    pub async fn get_service_by_id(&self, service_id: &ObjectId) -> Result<Service, Error> {
+        let coll = self.db.collection(COLLECTION_PROFILE);
+        let query = doc! {
+            "services._id": service_id,
+        };
+        let result = coll.find_one(query, None)
+            .await
+            .map_err(Error::from)?
+            .ok_or(Error::NoRecord)?;
+        
+        let profile: UserProfile = bson::from_document(result).map_err(Error::from)?;
+        let service = profile.services.into_iter()
+            .find(|s| &s._id == service_id)
+            .ok_or(Error::NoRecord)?;
+
+        Ok(service.service)
     }
 }

@@ -94,6 +94,11 @@ impl SMTPClient<TcpStream> {
         
         Ok(self)
     }
+    pub fn quit(&mut self) -> SMTPResult<&mut Self> {
+        self.0.send_command(Command::QUIT)?.expect_code(221)?;
+
+        Ok(self)
+    }
 }
 
 pub struct Endpoint {

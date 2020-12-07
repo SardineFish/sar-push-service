@@ -37,5 +37,5 @@ impl Model {
 pub use profile::{ UserProfile, Access, Service, ServiceRecord, ExtractProfile, ValidateProfile };
 pub use access::{ AccessManagerProfile };
 pub use error::{ Error };
-pub use notify::NotifyProfile;
+pub use notify::{NotifyProfile, EmailNotify, MailData, NotifyState};
 pub use service::{ ServiceManagerProfile };

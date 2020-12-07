@@ -97,8 +97,8 @@ impl MailBuilder {
         self.data.set_header(key, value);
         self
     }
-    pub fn message_id<L: Into<String>, R: Into<String>>(mut self, (left, right): (L, R)) -> Self {
-        self.data.set_header("Message-ID", format!("<{}@{}>", left.into(), right.into()));
+    pub fn message_id<T: Into<String>>(mut self, message_id: T) -> Self {
+        self.data.set_header("Message-ID", format!("<{}>", message_id.into()));
         self
     }
     pub fn body<T: Into<Bytes>>(mut self, body: T) -> Self {

@@ -2,21 +2,21 @@ use bytes::Bytes;
 
 #[derive(Default)]
 pub struct MIMEBody {
-    content_type: ContentType,
+    content_type: String,
     content_type_encoding: ContentTypeEncoding,
     body: Bytes,
 }
 
 impl MIMEBody {
-    pub fn new<'s, T: Into<&'s str>>(content_type: T) -> Self {
+    pub fn new<T: Into<String>>(content_type: T) -> Self {
         MIMEBody {
-            content_type: ContentType::from(content_type),
+            content_type: content_type.into(),
             content_type_encoding: ContentTypeEncoding::_7Bit,
             body: Bytes::new(),
         }
     }
-    pub fn text<'s, T: Into<&'s str>>(mut self, text: T) -> Self {
-        self.body = Bytes::from(Into::<&'s str>::into(text).to_string());
+    pub fn text<T: Into<String>>(mut self, text: T) -> Self {
+        self.body = Bytes::from(text.into());
         self
     }
     pub fn copy_from_slice(&mut self, data: &[u8]) {
@@ -30,7 +30,7 @@ impl MIMEBody {
 impl Into<Bytes> for MIMEBody {
     fn into(self) -> Bytes {
         let mut buf = Vec::<u8>::with_capacity(self.body.len() + 255);
-        buf.extend(Into::<String>::into(self.content_type).as_bytes());
+        buf.extend(self.content_type.as_bytes());
         buf.extend_from_slice(b"\r\n");
         buf.extend(Into::<String>::into(self.content_type_encoding).as_bytes());
         buf.extend_from_slice(b"\r\n\r\n");

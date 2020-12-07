@@ -6,6 +6,7 @@ use mongodb::bson;
 pub enum Error {
     MongoError(mongodb::error::Error),
     BsonDeserializeError(bson::de::Error),
+    SerializeError(bson::ser::Error),
     DocError(bson::document::ValueAccessError),
     NoRecord,
 }
@@ -13,6 +14,24 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Internal db error.")
+    }
+}
+
+impl From<bson::ser::Error> for Error {
+    fn from(err: bson::ser::Error) -> Self {
+        Error::SerializeError(err)
+    }
+}
+
+impl From<bson::de::Error> for Error {
+    fn from(err: bson::de::Error) -> Self {
+        Error::BsonDeserializeError(err)
+    }
+}
+
+impl From<mongodb::error::Error> for Error {
+    fn from(err: mongodb::error::Error) -> Self {
+        Error::MongoError(err)
     }
 }
 
