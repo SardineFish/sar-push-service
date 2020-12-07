@@ -10,6 +10,7 @@ pub enum Error {
     ErrorReply(Reply),
     HandshakeError(Box<Error>),
     ExtensionNotSupported(String),
+    OtherError(String),
 }
 pub type Result<T> = std::result::Result<T, Error>;
 

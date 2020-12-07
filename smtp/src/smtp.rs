@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::{self, Read, Write}, net::TcpStream};
+use std::{collections::HashMap, io::{self, Read, Write}, net::SocketAddr, net::TcpStream, time::Duration, net::ToSocketAddrs};
 
 use bytes::Bytes;
 
@@ -68,23 +68,51 @@ pub trait FromStream<T, E> {
 pub struct SMTPClient<S: Stream>(SMTPInner<S>);
 
 impl SMTPClient<TcpStream> {
-    pub fn connect<A: Into<Endpoint>>(addr: A) -> SMTPResult<SMTPClient<TcpStream>> {
+    fn set_default_port<'s, A: Into<Endpoint>>(addr: A, default: u16) -> (String, u16) {
         let mut addr: Endpoint = addr.into();
         if addr.port == 0 {
-            addr.port = 25;
+            addr.port = default;
         }
+        
+        (addr.host, addr.port)
+    }
 
-        let stream = TcpStream::connect((addr.host.as_str(), addr.port))
+    pub fn connect<A: Into<Endpoint>>(addr: A) -> SMTPResult<SMTPClient<TcpStream>> {
+        let stream = TcpStream::connect(Self::set_default_port(addr, 25))
             .map_err(SMTPError::from)?;
+        Self::from_tcp(stream)
+    }
+
+    pub fn connect_timeout<A: Into<Endpoint>>(addr: A, timeout: Duration) -> SMTPResult<SMTPClient<TcpStream>> {
+        let addr = Self::set_default_port(addr, 25)
+            .to_socket_addrs()
+            .map_err(SMTPError::from)?
+            .next()
+            .ok_or(SMTPError::OtherError(format!("Cannot resolve address")))?;
+
+        let stream = TcpStream::connect_timeout(&addr, timeout)
+            .map_err(SMTPError::from)?;
+        Self::from_tcp(stream)
+    }
+
+    pub fn set_timeout(&mut self, timeout: Option<Duration>) -> SMTPResult<&mut Self> {
+        self.0.stream.set_read_timeout(timeout).map_err(SMTPError::from)?;
+        self.0.stream.set_write_timeout(timeout).map_err(SMTPError::from)?;
+        Ok(self)
+    }
+
+    pub fn from_tcp(stream: TcpStream) -> SMTPResult<SMTPClient<TcpStream>> {
         let inner = SMTPInner::init_from_stream(stream, "localhost")?;
         Ok(SMTPClient(inner))
     }
+
     pub fn auth(&mut self, auth: AuthCommand) -> SMTPResult<&mut Self> {
         let mut auth_ext: Auth<TcpStream> = self.0.new_extension()
             .ok_or(SMTPError::ExtensionNotSupported(Auth::<TcpStream>::name().to_string()))?;
         auth_ext.send_auth(auth)?;
         Ok(self)
     }
+
     pub fn send<F: Into<String>, T: Into<String>, D: Into<Bytes>>(&mut self, mail_from: F, rcpt_to: T, data: D) -> SMTPResult<&mut Self> {
         self.0.send_command(Command::RSET)?.expect_code(250)?;
         self.0.send_command(Command::MAIL(mail_from.into()))?.expect_code(250)?;
