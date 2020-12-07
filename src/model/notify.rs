@@ -1,5 +1,5 @@
 use bson::doc;
-use mongodb::{Cursor, bson::oid::ObjectId};
+use mongodb::{ bson::oid::ObjectId};
 use mongodb::bson;
 use serde::{Serialize, Deserialize};
 use tokio::stream::StreamExt;
@@ -66,6 +66,7 @@ impl Model {
             mail,
         }
     }
+    #[allow(dead_code)]
     pub async fn get_all_notifications(&self) -> Result<Vec<EmailNotify>, Error> {
         let coll = self.db.collection(COLLECTION_NOTIFY);
         let result = coll.find(None, None)
@@ -87,7 +88,7 @@ impl Model {
         let result = coll.find(query, None)
             .await
             .map_err(mongo_error)?;
-            
+
         let notifications: Vec<EmailNotify> = result
             .filter_map(|doc| doc.ok().and_then(|d| bson::from_document(d).ok()))
             .collect()
@@ -114,7 +115,7 @@ impl Model {
     pub async fn add_notification(&self, notify: &EmailNotify) -> Result<(), Error> {
         let coll = self.db.collection(COLLECTION_NOTIFY);
         let doc = bson::to_document(notify).map_err(Error::from)?;
-        let result = coll.insert_one(doc, None).await.map_err(Error::from)?;
+        coll.insert_one(doc, None).await.map_err(Error::from)?;
         Ok(())
     }
 

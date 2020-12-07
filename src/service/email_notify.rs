@@ -1,7 +1,6 @@
 use model::{NotifyProfile, NotifyState, Service};
-use mongodb::bson::oid::ObjectId;
 use smtp::{mail::MailData, AuthCommand, Error as SMTPError, MIMEBody, MailBuilder, SMTPClient};
-use std::{net::SocketAddr, collections::VecDeque, fmt, sync::mpsc::{channel, Receiver, SendError, Sender}, thread::spawn, time::Duration};
+use std::{fmt, sync::mpsc::{channel, Receiver, SendError, Sender}, thread::spawn, time::Duration};
 
 use crate::model::{self, EmailNotify, Model};
 
