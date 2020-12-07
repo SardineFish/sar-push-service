@@ -77,7 +77,7 @@ impl EmailNotifyService {
         }
     }
 
-    pub fn enqueue(&self, _notify: EmailNotify) -> Result<(), SendError<()>> {
+    pub fn enqueue(&self) -> Result<(), SendError<()>> {
         self.mail_sender.send(())
     }
 
@@ -119,7 +119,7 @@ impl EmailNotifyService {
     }
 
     async fn dequeue_notify(model: &Model) -> Result<(), Error> {
-        let notifications = model.get_notifications().await.map_err(Error::from)?;
+        let notifications = model.get_all_notifications().await.map_err(Error::from)?;
 
         let notify = notifications
             .into_iter()

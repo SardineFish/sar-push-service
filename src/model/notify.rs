@@ -66,7 +66,7 @@ impl Model {
             mail,
         }
     }
-    pub async fn get_notifications(&self) -> Result<Vec<EmailNotify>, Error> {
+    pub async fn get_all_notifications(&self) -> Result<Vec<EmailNotify>, Error> {
         let coll = self.db.collection(COLLECTION_NOTIFY);
         let result = coll.find(None, None)
             .await
@@ -78,12 +78,29 @@ impl Model {
 
         Ok(notifications)
     }
+
+    pub async fn get_notification_by_message_id(&self, message_id: &ObjectId) -> Result<EmailNotify, Error> {
+        let coll = self.db.collection(COLLECTION_NOTIFY);
+        let query = doc! {
+            "_id": message_id,
+        };
+        let doc = coll.find_one(query, None)
+            .await
+            .map_err(Error::from)?
+            .ok_or(Error::NoRecord)?;
+
+        let notify = bson::from_document(doc).unwrap();
+        
+        Ok(notify)
+    }
+
     pub async fn add_notification(&self, notify: &EmailNotify) -> Result<(), Error> {
         let coll = self.db.collection(COLLECTION_NOTIFY);
         let doc = bson::to_document(notify).map_err(Error::from)?;
         let result = coll.insert_one(doc, None).await.map_err(Error::from)?;
         Ok(())
     }
+
     pub async fn update_notification(&self, notify: &EmailNotify) -> Result<(), Error> {
         let coll = self.db.collection(COLLECTION_NOTIFY);
         let query = doc! {

@@ -22,7 +22,7 @@ Only the user with an *Email Notify Service* profile can be accessible to reques
 ### Request
 ```json
 {
-    "receiver": "<Receiver email address>",
+    "to": "<Receiver email address>",
     "subject": "<Subject of the notification email>",
     "content_type": "<Content-Type in the mail header>",
     "body": "<EMail body of the notification>"
@@ -34,6 +34,7 @@ Only the user with an *Email Notify Service* profile can be accessible to reques
 {
     "message_id": "<An unique ID of the message>",
     "status": "<Mail status, Pending | Sent | Error>",
+    "error": "[Error message if status == Error]"
 }
 ```
 
@@ -48,5 +49,6 @@ No request data required.
 {
     "message_id": "<An unique ID of the message>",
     "status": "<Mail status, Pending | Sent | Error>",
+    "error": "[Error message if status == Error]"
 }
 ```
