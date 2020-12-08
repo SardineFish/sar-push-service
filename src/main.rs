@@ -68,6 +68,8 @@ async fn main() -> std::io::Result<()> {
     if matches.is_present("init") {
         let model = Model::new(db_addr, db_name).await.unwrap();
         model.init_db().await.unwrap();
+        log::info!("Service init successfully.");
+        std::process::exit(0);
     }
 
     log::info!("Server listen on '{}'", local_addr);
