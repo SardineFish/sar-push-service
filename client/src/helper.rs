@@ -4,7 +4,7 @@ use reqwest::{RequestBuilder, Response};
 use serde::{Serialize, Deserialize};
 use std::pin::Pin;
 
-use crate::auth::UserAuth;
+use crate::{auth::UserAuth, error::{Error, Result}};
 
 pub trait RequestHelper {
     fn auth(self, auth: Option<UserAuth>) -> Self;
@@ -26,19 +26,21 @@ struct ErrorReport {
 }
 
 pub trait ResponseHelper {
-    fn handle_error(self) -> Pin<Box<dyn Future<Output=Self>>>;
+    type OutputSelf;
+    fn handle_error(self) -> Pin<Box<dyn Future<Output=Self::OutputSelf>>>;
 }
 
 impl ResponseHelper for Response {
-    fn handle_error(self) -> Pin<Box<dyn Future<Output=Self>>> {
+    type OutputSelf = Result<Self>;
+    fn handle_error(self) -> Pin<Box<dyn Future<Output=Self::OutputSelf>>> {
         Box::pin(async move {
             if self.status().is_client_error() || self.status().is_server_error() {
                 let status = self.status();
-                let err: ErrorReport = self.json().await.expect("Invalid response");
-                panic!("Error-{}:{}", status, err.error);
+                let err: ErrorReport = self.json().await.map_err(Error::from)?;
+                Err(Error::ResponseError(status, err.error))
+            } else {
+                Ok(self)
             }
-
-            self
         })
     }
 }

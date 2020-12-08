@@ -3,13 +3,20 @@ use clap::{App, ArgMatches};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::{auth::UserAuth, AppConfig};
+use crate::{AppConfig, error::Error, auth::UserAuth, error::Result};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Access {
     Root,
     Admin,
     User,
+}
+
+impl Access {
+    pub fn from_str(access: &str) -> Result<Self> {
+        serde_yaml::from_str(access)
+            .map_err(|_| Error::ErrorInfo("Invalid access"))
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -29,7 +36,7 @@ pub fn config() -> App<'static> {
         .arg("[UID] 'uid of a specific user'")
 }
 
-pub async fn access<'s>(cfg: AppConfig<'s>, matches: &ArgMatches) {
+pub async fn access<'s>(cfg: AppConfig<'s>, matches: &ArgMatches) -> Result<()> {
     if let Some(uid) = matches.value_of("UID") {
         if matches.is_present("delete") {
             let response: UserAuth = Client::new()
@@ -37,12 +44,12 @@ pub async fn access<'s>(cfg: AppConfig<'s>, matches: &ArgMatches) {
                 .auth(cfg.auth)
                 .send()
                 .await
-                .unwrap()
+                .map_err(Error::from)?
                 .handle_error()
-                .await
+                .await?
                 .json()
                 .await
-                .unwrap();
+                .map_err(Error::from)?;
 
             output(response, cfg.output);
         } else {
@@ -51,12 +58,12 @@ pub async fn access<'s>(cfg: AppConfig<'s>, matches: &ArgMatches) {
                 .auth(cfg.auth)
                 .send()
                 .await
-                .unwrap()
+                .map_err(Error::from)?
                 .handle_error()
-                .await
+                .await?
                 .json()
                 .await
-                .unwrap();
+                .map_err(Error::from)?;
 
             output(response, cfg.output);
         }
@@ -65,7 +72,7 @@ pub async fn access<'s>(cfg: AppConfig<'s>, matches: &ArgMatches) {
         matches.value_of("description"),
         matches.value_of("access"),
     ) {
-        let access: Access = serde_yaml::from_str(access).expect("Invalid access");
+        let access: Access = serde_yaml::from_str(access).map_err(|_| Error::ErrorInfo("Invalid access"))?;
         let profile = PubUserInfo {
             name: name.to_string(),
             description: desc.to_string(),
@@ -78,12 +85,14 @@ pub async fn access<'s>(cfg: AppConfig<'s>, matches: &ArgMatches) {
             .json(&profile)
             .send()
             .await
-            .unwrap()
+            .map_err(Error::from)?
             .handle_error()
-            .await
+            .await?
             .json()
             .await
-            .unwrap();
+            .map_err(Error::from)?;
         output(result, cfg.output);
     }
+
+    Ok(())
 }

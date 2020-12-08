@@ -12,6 +12,9 @@ mod access;
 mod service;
 mod notify;
 mod helper;
+mod error;
+
+use error::Error;
 
 #[derive(Debug, Default)]
 pub struct AppConfig<'s> {
@@ -32,30 +35,7 @@ async fn main() {
         .arg("-o, --output=[OUTPUT] 'Save output to file'")
         .arg("[URL] 'API url'")
         .subcommand(access::config())
-        .subcommand(App::new("service")
-            .about("Service management")
-            .arg("--user=[UID] 'uid of a specific user'")
-            .arg("--service=[SID] 'service_id of a specific service'")
-            .arg("--add 'Add new service profile'")
-            .arg("-d, --delete 'Delete a service from a user specific by uid'")
-            .subcommand(App::new("notify")
-                .about("Email notification push service")
-                .arg("--smtp-addr=[SMTP_ADDR] 'Address of the SMTP server'")
-                .arg("--tls 'Wether connect to SMTP server through TLS'")
-                .arg("--username=[USRNAME] 'Username used for SMTP authorization'")
-                .arg("--password=[PASSWD] 'Password used for SMTP authorization'")
-                .arg("--email-addr=[MAIL_ADDR] 'Mail address of the notification sender'")
-                .arg("--name=[NAME] 'Display name of the noficiation sender'")
-            )
-            .subcommand(App::new("access")
-                .about("User access management service.")
-                .arg("--access=[ACCESS] 'Access level of the access manager'")
-            )
-            .subcommand(App::new("service")
-                .about("Service management")
-                .arg("--access=[ACCESS] 'Access level of the service mamager'")
-            )
-        )
+        .subcommand(service::config())
         .subcommand(App::new("notify")
             .about("Email notification push service")
             .arg("[MSG_ID] 'message_id of a notification'")
@@ -95,8 +75,21 @@ async fn main() {
     }
 
 
-    if let Some(matches) = matches.subcommand_matches("access") {
-        access::access(config, matches).await;
+    let result = if let Some(matches) = matches.subcommand_matches("access") {
+        access::access(config, matches).await
+    } else if let Some(matches) = matches.subcommand_matches("service") {
+        service::service(config, matches).await
+    }
+    else {
+        Ok(())
+    };
+
+    match result {
+        Err(Error::JsonError(err)) => println!("Invalid JSON format: {:?}", err),
+        Err(Error::NetworkError(err)) => println!("API Request failed: {:?}", err),
+        Err(Error::ResponseError(status, err)) => println!("Error {} {}", status, err),
+        Err(Error::ErrorInfo(err)) => println!("{}", err),
+        _ => ()
     }
 
 }
