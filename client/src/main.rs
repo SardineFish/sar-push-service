@@ -36,22 +36,7 @@ async fn main() {
         .arg("[URL] 'API url'")
         .subcommand(access::config())
         .subcommand(service::config())
-        .subcommand(App::new("notify")
-            .about("Email notification push service")
-            .arg("[MSG_ID] 'message_id of a notification'")
-            .arg("--list 'List notifications'")
-            .arg("--all ")
-            .arg("--error")
-            .arg("--sent")
-            .arg("--pending")
-            .subcommand(App::new("send")
-                .about("Send a noficiation through email")
-                .arg("[EMAIL_ADDR] 'Email address of the notification receiver'")
-                .arg("[BODY_FILE] 'File path to the notification body'")
-                .arg("--content-type=[CONTENT_TYPE] 'Content-Type of the notification mail'")
-                .arg("--text=[TEXT_BODY] 'Notification body text'")
-            )
-        )
+        .subcommand(notify::config())
         .get_matches();
 
     let mut config = AppConfig::default();
@@ -79,6 +64,8 @@ async fn main() {
         access::access(config, matches).await
     } else if let Some(matches) = matches.subcommand_matches("service") {
         service::service(config, matches).await
+    } else if let Some(matches) = matches.subcommand_matches("notify") {
+        notify::notify(config, &matches).await
     }
     else {
         Ok(())
