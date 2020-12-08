@@ -34,6 +34,27 @@ pub enum NotifyState {
     Error(String, String),
 }
 
+impl NotifyState {
+    pub fn is_pending(&self) -> bool {
+        match self {
+            NotifyState::Pending => true,
+            _ => false,
+        }
+    }
+    pub fn is_sent(&self) -> bool {
+        match self {
+            NotifyState::Sent => true,
+            _ => false,
+        }
+    }
+    pub fn is_error(&self) -> bool {
+        match self {
+            NotifyState::Error(_, _) => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct MailData {
     pub to: String,
@@ -66,10 +87,12 @@ impl Model {
             mail,
         }
     }
-    #[allow(dead_code)]
-    pub async fn get_all_notifications(&self) -> Result<Vec<EmailNotify>, Error> {
+    pub async fn get_all_notifications_by_service(&self, service_id: &ObjectId) -> Result<Vec<EmailNotify>, Error> {
         let coll = self.db.collection(COLLECTION_NOTIFY);
-        let result = coll.find(None, None)
+        let query = doc!{
+            "sender_profile": service_id
+        };
+        let result = coll.find(query, None)
             .await
             .map_err(mongo_error)?;
         let notifications: Vec<EmailNotify> = result

@@ -25,7 +25,7 @@ async fn config_app() -> AppType {
     // env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
     
     let model = Model::new().await.unwrap();
-    let notify_service = EmailNotifyService::new(model.clone(), Duration::from_millis(100));
+    let notify_service = EmailNotifyService::new(model.clone(), Duration::from_millis(300));
     test::init_service(
     App::new()
             .data(model.clone())

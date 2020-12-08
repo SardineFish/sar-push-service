@@ -1,9 +1,10 @@
-use actix_web::{web::Path, Result, error as web_errors, get, post, web::Data, web::Json, web::ServiceConfig};
+use actix_web::{Result, error as web_errors, get, post, web::Data, web::Json, web::Path, web::{Query, ServiceConfig}};
 use model::MailData;
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
+use super::access_check::AccessCheckUtils;
 
-use crate::model::{self, EmailNotify, ExtractProfile, NotifyProfile, NotifyState, UserProfile};
+use crate::model::{self, EmailNotify, ExtractProfile, NotifyProfile, NotifyState, UserProfile, Service};
 
 use super::extractor::ExtensionMove;
 
@@ -24,6 +25,19 @@ impl Into<MailData> for NotifyRequest {
             body: self.body,
         }
     }
+}
+
+#[derive(Deserialize)]
+enum NotifyStatusFilter {
+    All,
+    Pending,
+    Sent,
+    Error,
+}
+
+#[derive(Deserialize)]
+struct ListNotifyQuery {
+    filter: NotifyStatusFilter,
 }
 
 #[derive(Serialize)]
@@ -128,7 +142,41 @@ async fn query_status(Path(message_id): Path<String>, auth: Auth, model: Model) 
 
 }
 
+#[get("/all/{uid}")]
+async fn list_notifications(
+    Path(uid): Path<String>, 
+    auth: Auth, 
+    model: Model, 
+    Query(params): Query<ListNotifyQuery>,
+) -> Result<Json<Vec<PubNotifyInfo>>> {
+    let profile: UserProfile = model.allow_self_or_admin_access(&auth, auth.access, &uid).await?;
+
+    let service_profile = profile.services.iter().find(|s| match s.service {
+        Service::EmailNotify(_) => true,
+        _ => false,
+    }).ok_or(web_errors::ErrorNotFound("Service not found"))?;
+
+    let filter = match params.filter {
+        NotifyStatusFilter::All => |_: &EmailNotify| true,
+        NotifyStatusFilter::Error => |t: &EmailNotify| t.status.is_error(),
+        NotifyStatusFilter::Pending => |t: &EmailNotify| t.status.is_pending(),
+        NotifyStatusFilter::Sent => |t: &EmailNotify| t.status.is_sent(),
+    };
+
+    let result = model.get_all_notifications_by_service(&service_profile._id)
+        .await
+        .map_err(handel_model_error)?;
+    
+    let result: Vec<PubNotifyInfo> = result.into_iter()
+        .filter(filter)
+        .map(PubNotifyInfo::from)
+        .collect();
+
+    Ok(Json(result))
+}
+
 pub fn config(cfg: &mut ServiceConfig) {
     cfg.service(queue)
-        .service(query_status);
+        .service(query_status)
+        .service(list_notifications);
 }

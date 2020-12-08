@@ -27,6 +27,7 @@ impl UserProfile {
     pub fn set_id(&mut self, id: ObjectId) {
         self._id = id;
     }
+
 }
 
 pub const KEY_ID: &str = "uid";

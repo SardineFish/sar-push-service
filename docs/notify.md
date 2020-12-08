@@ -38,7 +38,45 @@ Only the user with an *Email Notify Service* profile can be accessible to reques
 }
 ```
 
-## Query the status of a notification email
+----------------
+
+## List all notification
+`GET /notify/all/{uid}?filter=<status>`
+
+List all notification of a specific user.
+
+### Query Parameters
+
+| Param  | Type | Description |
+|--------|------|-------------|
+| filter | `Enum` ( `All` \| `Pending` \| `Sent` \| `Error` ) | List only the nofications status match the filter
+
+### Request
+No request data required.
+
+### Response
+```json
+[
+    {
+        "message_id": "<An unique ID of the message>",
+        "status": "<Mail status, Pending | Sent | Error>",
+        "error": "[Error message if status == Error]"
+    },
+    {
+        "message_id": "<Another unique ID of the message>",
+        "status": "<Mail status, Pending | Sent | Error>",
+        "error": "[Error message if status == Error]"
+    },
+    "...",
+]
+```
+
+### Error 
+If the user specific by `uid` dose not exists or dose not have a notify service, 404 will be response.
+
+----------------
+
+## Query the status of a specific notification email
 `GET /notify/{message_id}`
 
 ### Request

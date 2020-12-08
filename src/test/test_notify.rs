@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use actix_http::http::StatusCode;
+use actix_http::{http::StatusCode};
 use actix_rt;
 use actix_web::{dev::ServiceResponse, test::TestRequest};
 
@@ -18,14 +18,14 @@ struct NotifyRequest {
     body: String,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 enum NotifyStatus {
     Pending,
     Sent,
     Error,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 struct PubNotifyInfo {
     message_id: String,
     status: NotifyStatus,
@@ -37,6 +37,14 @@ async fn send_notification(app: &mut AppType, root: &UserAuth, request: NotifyRe
         .uri("/notify/queue")
         .auth(&root.uid, &root.secret)
         .set_json(&request)
+        .send_request(app)
+        .await
+}
+
+async fn list_all_notifications(app: &mut AppType, auth: &UserAuth, uid: &str, filter: &str) -> ServiceResponse {
+    TestRequest::get()
+        .uri(&format!("/notify/all/{}?filter={}", uid, filter))
+        .auth(&auth.uid, &auth.secret)
         .send_request(app)
         .await
 }
@@ -95,7 +103,7 @@ async fn test_notify() {
         .expect_status(StatusCode::OK);
     });
 
-    let notify: PubNotifyInfo = test_case!("Send notification should be ok", async {
+    let mut notify: PubNotifyInfo = test_case!("Send notification should be ok", async {
         let result: PubNotifyInfo = send_notification(&mut app, &admin, notify_request.clone())
         .await
         .expect_status(StatusCode::OK)
@@ -113,20 +121,65 @@ async fn test_notify() {
         .await;
     });
 
-    actix_rt::time::delay_for(Duration::from_secs(1)).await;
+    // Wait for SMTP timtout
+    actix_rt::time::delay_for(Duration::from_millis(600)).await;
 
+    notify.status = NotifyStatus::Error;
+    notify.error = Some("Cannot connect to SMTP Server".to_string());
     test_case!("Query previous sent notification should be ok with error status", async {
         let result: PubNotifyInfo = query_notification(&mut app, &admin, &notify.message_id)
         .await
         .expect_status(StatusCode::OK)
         .into_json()
         .await;
-        assert!(result.error.is_some());
-        assert_eq!(result.error.unwrap(), "Cannot connect to SMTP Server"); 
+        assert_eq!(result, notify); 
+    });
+
+    let mut another_notify = test_case!("Send notification again should be ok", async {
+        let result: PubNotifyInfo = send_notification(&mut app, &admin, notify_request.clone())
+        .await
+        .expect_status(StatusCode::OK)
+        .into_json()
+        .await;
+        assert_eq!(result.status, NotifyStatus::Pending);
+        result
+    });
+
+    test_case!("List all pending notification should be ok", async {
+        let result: Vec<PubNotifyInfo> = list_all_notifications(&mut app, &admin, &admin.uid, "Pending")
+        .await
+        .expect_status(StatusCode::OK)
+        .into_json()
+        .await;
+
+        assert_eq!(result, vec![another_notify.clone()]);
+    });
+
+    // Wait for SMTP timtout
+    actix_rt::time::delay_for(Duration::from_millis(600)).await;
+
+    another_notify.status = NotifyStatus::Error;
+    another_notify.error = Some("Cannot connect to SMTP Server".to_string());
+    test_case!("List all notification should be ok", async {
+        let result: Vec<PubNotifyInfo> = list_all_notifications(&mut app, &admin, &admin.uid, "All")
+        .await
+        .expect_status(StatusCode::OK)
+        .into_json()
+        .await;
+
+        assert_eq!(result, vec![notify.clone(), another_notify.clone()]);
     });
 
     test_case!("Query other's notification should be forbidden", async {
         query_notification(&mut app, &another_admin, &notify.message_id)
+        .await
+        .expect_status(StatusCode::FORBIDDEN)
+        .expect_error_data()
+        .await;
+    });
+
+    test_case!("List other's notification should be forbidden", async {
+        list_all_notifications(&mut app, &another_admin, &admin.uid, "All")
         .await
         .expect_status(StatusCode::FORBIDDEN)
         .expect_error_data()
