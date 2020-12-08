@@ -26,6 +26,5 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         web::scope("/notify")
             .wrap(service_guard::<NotifyProfile, _, _>())
             .configure(notify::config),
-    )
-    .data(model::Model::new());
+    );
 }

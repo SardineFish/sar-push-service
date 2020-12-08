@@ -15,6 +15,8 @@ use actix_rt::time;
 use crate::{service::EmailNotifyService, controller, middleware, model::ServiceRecord, model::{AccessManagerProfile, Model, Service, ServiceManagerProfile, Access, UserProfile}};
 
 const TEST_ADDR: &str = "localhost:3000";
+const TEST_DB_ADDR: &str = "mongodb://mongo";
+const TEST_DB_NAME: &str = "sar-notify-test";
 const TEST_ROOT_UID: &str = "test-root";
 const TEST_ROOT_SECRET: &str = "TEST_SECRET";
 
@@ -24,7 +26,7 @@ type AppType = impl actix_web::dev::Service<Request = Request, Response= Service
 async fn config_app() -> AppType {
     // env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
     
-    let model = Model::new().await.unwrap();
+    let model = Model::new(TEST_DB_ADDR, TEST_DB_NAME).await.unwrap();
     let notify_service = EmailNotifyService::new(model.clone(), Duration::from_millis(300));
     test::init_service(
     App::new()
@@ -38,7 +40,7 @@ async fn config_app() -> AppType {
 
 #[actix_rt::test]
 async fn init() {
-    let model = Model::new().await.unwrap();
+    let model = Model::new(TEST_DB_ADDR, TEST_DB_NAME).await.unwrap();
     let mut profile = model.new_user("Test Root".to_string(), "Root use for test".to_string(), crate::model::Access::Root);
     profile.uid = TEST_ROOT_UID.to_string();
     profile.secret = TEST_ROOT_SECRET.to_string();
@@ -57,7 +59,7 @@ async fn init() {
 
 #[actix_rt::test]
 async fn test_service_setup() {
-    let server = super::start_server(TEST_ADDR).await.unwrap();
+    let server = super::start_server(TEST_DB_ADDR, TEST_DB_NAME, TEST_ADDR).await.unwrap();
 
     let srv = server.clone();
     let thread = spawn(move || {
