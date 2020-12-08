@@ -35,10 +35,11 @@ pub fn config<'s>() -> App<'s> {
         .subcommand(
             App::new("list")
                 .about("List notifications")
-                .arg("--all ")
+                .arg("--all")
                 .arg("--error")
                 .arg("--sent")
-                .arg("--pending"),
+                .arg("--pending")
+                .arg("--user=[UID], 'User's uid to be list'")
         )
         .subcommand(
             App::new("send")
@@ -54,6 +55,41 @@ pub fn config<'s>() -> App<'s> {
 
 pub async fn notify(cfg: AppConfig<'_>, matches: &ArgMatches) -> Result<()> {
     if let Some(matches) = matches.subcommand_matches("list") {
+        let filter = if matches.is_present("all") {
+            "All"
+        } else if matches.is_present("error") {
+            "Error"
+        } else if matches.is_present("sent") {
+            "Sent"
+        } else if matches.is_present("pending") {
+            "Pending"
+        } else {
+            "All"
+        };
+
+        let uid = if let Some(uid) = matches.value_of("user") {
+            uid.to_string()
+        } else if let Some(auth) = &cfg.auth {
+            auth.uid.clone()
+        } else {
+            return Err(Error::ErrorInfo("Missing user"));
+        };
+
+        let result: Vec<PubNotifyInfo> = Client::new()
+            .get(&format!("{}/notify/all/{}?filter={}", cfg.url, uid, filter))
+            .auth(cfg.auth)
+            .send()
+            .await
+            .map_err(Error::from)?
+            .handle_error()
+            .await?
+            .json()
+            .await
+            .map_err(Error::from)?;
+        
+        println!("List notifications:");
+        output(result, cfg.output);
+
     } else if let Some(matches) = matches.subcommand_matches("send") {
         let receiver = matches
             .value_of("RECEIVER_ADDR")
@@ -113,6 +149,6 @@ pub async fn notify(cfg: AppConfig<'_>, matches: &ArgMatches) -> Result<()> {
     } else {
         return Err(Error::ErrorInfo("Invalid arguments"));
     }
-    
+
     Ok(())
 }

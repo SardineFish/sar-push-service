@@ -30,7 +30,7 @@ impl MIMEBody {
 impl Into<Bytes> for MIMEBody {
     fn into(self) -> Bytes {
         let mut buf = Vec::<u8>::with_capacity(self.body.len() + 255);
-        buf.extend(self.content_type.as_bytes());
+        buf.extend(format!("Content-Type: {}", self.content_type).as_bytes());
         buf.extend_from_slice(b"\r\n");
         buf.extend(Into::<String>::into(self.content_type_encoding).as_bytes());
         buf.extend_from_slice(b"\r\n\r\n");

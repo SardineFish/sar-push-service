@@ -173,7 +173,7 @@ impl PushService {
         let content = MIMEBody::new(&notify.mail.content_type).text(&notify.mail.body);
 
         let mail = MailBuilder::new()
-            .from((&profile.name, &profile.password))
+            .from((&profile.name, &profile.email_address))
             .to(notify.mail.to.as_str())
             .message_id(&notify.message_id)
             .subject(&notify.mail.subject)
