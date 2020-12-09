@@ -25,6 +25,13 @@ struct PubUserInfo {
     pub access: Access,
 }
 
+#[derive(Serialize, Deserialize)]
+struct PartialUserInfo {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub access: Option<Access>,
+}
+
 pub fn config() -> App<'static> {
     App::new("access")
         .about("User access controller.")
@@ -67,7 +74,10 @@ pub async fn access<'s>(cfg: AppConfig<'s>, matches: &ArgMatches) -> Result<()> 
         delete(cfg, matches).await?;
     } else if let Some(matches) = matches.subcommand_matches("grant") {
         grant(cfg, matches).await?;
+    } else if let Some(matches) = matches.subcommand_matches("update") {
+        update(cfg, matches).await?;
     } else {
+        
         let uid = if let Some(uid) = matches.value_of("UID") {
             uid
         } else if let Some(auth) = &cfg.auth {
@@ -88,6 +98,7 @@ pub async fn access<'s>(cfg: AppConfig<'s>, matches: &ArgMatches) -> Result<()> 
             .await
             .map_err(Error::from)?;
 
+        println!("User profile updated.");
         output(response, cfg.output);
     }
 
@@ -173,6 +184,39 @@ async fn grant(cfg: AppConfig<'_>, matches: &ArgMatches) -> Result<()> {
         .map_err(Error::from)?;
 
     println!("A new access granted.");
+    output(result, cfg.output);
+    Ok(())
+}
+
+async fn update(cfg: AppConfig<'_>, matches: &ArgMatches) -> Result<()> {
+    let uid = if let Some(uid) = matches.value_of("UID") {
+        uid
+    } else if let Some(auth) = &cfg.auth {
+        &auth.uid
+    } else {
+        return Err(Error::ErrorInfo("Missing uid"));
+    };
+
+    let profile = PartialUserInfo {
+        name: matches.value_of("name").map(|s|s.to_string()),
+        description: matches.value_of("access").map(|s|s.to_string()),
+        access: matches.value_of("access").and_then(|s|Access::from_str(s).ok()),
+    };
+
+    let result: PubUserInfo = Client::new()
+        .patch(&format!("{}/access/user/{}", cfg.url, uid))
+        .auth(cfg.auth)
+        .json(&profile)
+        .send()
+        .await
+        .map_err(Error::from)?
+        .handle_error()
+        .await?
+        .json()
+        .await
+        .map_err(Error::from)?;
+
+    println!("User profile updated.");
     output(result, cfg.output);
     Ok(())
 }
