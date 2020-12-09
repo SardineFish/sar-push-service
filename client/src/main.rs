@@ -1,6 +1,5 @@
 use auth::UserAuth;
-use clap::{App, Subcommand, Arg};
-use tokio::prelude::*;
+use clap::{App, };
 
 extern crate clap;
 extern crate reqwest;

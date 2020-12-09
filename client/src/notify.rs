@@ -1,4 +1,3 @@
-use super::access::Access;
 use super::helper::*;
 use clap::{App, ArgMatches};
 use reqwest::Client;
