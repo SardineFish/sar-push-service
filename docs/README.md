@@ -1,7 +1,7 @@
 # Sar Push Service API Documentation
 
 ## API Content
-- [Sar Push Service API Documentation](./index.md)
+- [Sar Push Service API Documentation](./README.md)
   - [User and Access Control Service](./access.md)
   - [Services Profile Management](./services.md)
   - [Email Notify Service](./notify.md)

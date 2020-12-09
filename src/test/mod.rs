@@ -15,7 +15,7 @@ use actix_rt::time;
 use crate::{service::EmailNotifyService, controller, middleware, model::ServiceRecord, model::{AccessManagerProfile, Model, Service, ServiceManagerProfile, Access, UserProfile}};
 
 const TEST_ADDR: &str = "localhost:3000";
-const TEST_DB_ADDR: &str = "mongodb://mongo";
+const TEST_DB_ADDR: &str = "mongodb://localhost";
 const TEST_DB_NAME: &str = "sar-notify-test";
 const TEST_ROOT_UID: &str = "test-root";
 const TEST_ROOT_SECRET: &str = "TEST_SECRET";
