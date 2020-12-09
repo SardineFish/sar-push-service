@@ -67,7 +67,15 @@ pub async fn access<'s>(cfg: AppConfig<'s>, matches: &ArgMatches) -> Result<()> 
         delete(cfg, matches).await?;
     } else if let Some(matches) = matches.subcommand_matches("grant") {
         grant(cfg, matches).await?;
-    } else if let Some(uid) = matches.value_of("UID") {
+    } else {
+        let uid = if let Some(uid) = matches.value_of("UID") {
+            uid
+        } else if let Some(auth) = &cfg.auth {
+            &auth.uid
+        } else {
+            return Err(Error::ErrorInfo("Missing uid"));
+        };
+
         let response: PubUserInfo = Client::new()
             .get(format!("{}/access/user/{}", cfg.url, uid).as_str())
             .auth(cfg.auth)
@@ -81,8 +89,6 @@ pub async fn access<'s>(cfg: AppConfig<'s>, matches: &ArgMatches) -> Result<()> 
             .map_err(Error::from)?;
 
         output(response, cfg.output);
-    } else {
-        return Err(Error::ErrorInfo("Invalid arguments"));
     }
 
     Ok(())

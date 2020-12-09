@@ -43,7 +43,7 @@ pub fn config<'s>() -> App<'s> {
         .subcommand(
             App::new("send")
                 .about("Send a noficiation through email")
-                .arg("[RECEIVER_ADDR] 'Email address of the notification receiver'")
+                // .arg("[RECEIVER_ADDR] 'Email address of the notification receiver'")
                 .arg("[BODY_FILE] 'File path to the notification body'")
                 .arg("--to=[RECEIVER_ADDR] 'Email address of the notification receiver'")
                 .arg("--subject=[SUBJECT] 'Subject of the notification mail'")
@@ -91,7 +91,7 @@ pub async fn notify(cfg: AppConfig<'_>, matches: &ArgMatches) -> Result<()> {
 
     } else if let Some(matches) = matches.subcommand_matches("send") {
         let receiver = matches
-            .value_of("RECEIVER_ADDR")
+            .value_of("to")
             .ok_or(Error::ErrorInfo("Missing receiver's mail address"))?
             .to_string();
         let content_type = matches
