@@ -2172,6 +2172,7 @@ dependencies = [
  "base64 0.13.0",
  "bytes 0.6.0",
  "chrono",
+ "openssl",
  "uuid",
 ]
 

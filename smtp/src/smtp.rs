@@ -1,9 +1,13 @@
-use std::{collections::HashMap, io::{self, Read, Write}, net::SocketAddr, net::TcpStream, time::Duration, net::ToSocketAddrs};
+use std::{collections::HashMap, io::{self, Read, Write}, net::TcpStream, time::Duration, net::ToSocketAddrs};
 
 use bytes::Bytes;
+use openssl::ssl::{SslConnector, SslMethod, SslStream};
 
 use crate::{auth::{Auth, AuthCommand}, command::{Command, SMTPCommand}, extension::Extension, reply::Reply};
 use super::error::{Error as SMTPError, Result as SMTPResult};
+
+const SMTP_DEFAULT_PORT: u16 = 25;
+const SMTP_DEFAULT_TLS_PORT: u16 = 465;
 
 pub struct SMTPInner<S: Stream> {
     stream: S,
@@ -68,6 +72,70 @@ pub trait FromStream<T, E> {
 pub struct SMTPClient<S: Stream>(SMTPInner<S>);
 
 impl SMTPClient<TcpStream> {
+
+    pub fn connect<A: Into<Endpoint>>(addr: A) -> SMTPResult<SMTPClient<TcpStream>> {
+        let stream = TcpStream::connect(Self::set_default_port(addr, SMTP_DEFAULT_PORT))
+            .map_err(SMTPError::from)?;
+        Self::from_tcp(stream)
+    }
+
+    pub fn connect_timeout<A: Into<Endpoint>>(addr: A, timeout: Duration) -> SMTPResult<SMTPClient<TcpStream>> {
+        let addr = Self::set_default_port(addr, SMTP_DEFAULT_PORT)
+            .to_socket_addrs()
+            .map_err(SMTPError::from)?
+            .next()
+            .ok_or(SMTPError::OtherError(format!("Cannot resolve address")))?;
+
+        let stream = TcpStream::connect_timeout(&addr, timeout)
+            .map_err(SMTPError::from)?;
+        stream.set_read_timeout(Some(timeout)).map_err(SMTPError::from)?;    
+        stream.set_write_timeout(Some(timeout)).map_err(SMTPError::from)?;
+
+        Self::from_tcp(stream)
+    }
+
+    fn from_tcp(stream: TcpStream) -> SMTPResult<SMTPClient<TcpStream>> {
+        let inner = SMTPInner::init_from_stream(stream, "localhost")?;
+        Ok(SMTPClient(inner))
+    }
+}
+
+impl SMTPClient<SslStream<TcpStream>> {
+
+    pub fn connect_tls<A: Into<Endpoint>>(addr: A) -> SMTPResult<SMTPClient<SslStream<TcpStream>>> {
+        let (host, port) = Self::set_default_port(addr, SMTP_DEFAULT_TLS_PORT);
+        let stream = TcpStream::connect((host.clone(), port)).map_err(SMTPError::from)?;
+
+        Self::init_tls(stream, &host)
+    }
+
+    pub fn connect_tls_timeout<A: Into<Endpoint>>(addr: A, timeout: Duration) -> SMTPResult<SMTPClient<SslStream<TcpStream>>> {
+        let (host, port) = Self::set_default_port(addr, SMTP_DEFAULT_TLS_PORT);
+        let addr = (host.as_str(), port).to_socket_addrs()
+            .map_err(SMTPError::from)?
+            .next()
+            .ok_or(SMTPError::OtherError(format!("Cannot resolve address")))?;
+
+        let stream = TcpStream::connect_timeout(&addr, timeout)
+            .map_err(SMTPError::from)?;
+        stream.set_read_timeout(Some(timeout)).map_err(SMTPError::from)?;
+        stream.set_write_timeout(Some(timeout)).map_err(SMTPError::from)?;
+
+        Self::init_tls(stream, &host)
+    }
+
+    fn init_tls(stream: TcpStream, host: &str) -> SMTPResult<SMTPClient<SslStream<TcpStream>>> {
+        let connector = SslConnector::builder(SslMethod::tls())
+            .map_err(SMTPError::from)?
+            .build();
+        let stream = connector.connect(host, stream).map_err(SMTPError::from)?;
+        let inner = SMTPInner::init_from_stream(stream, "localhost")?;
+        Ok(SMTPClient(inner))
+    }
+}
+
+impl<S: Stream> SMTPClient<S> {
+    
     fn set_default_port<'s, A: Into<Endpoint>>(addr: A, default: u16) -> (String, u16) {
         let mut addr: Endpoint = addr.into();
         if addr.port == 0 {
@@ -77,38 +145,9 @@ impl SMTPClient<TcpStream> {
         (addr.host, addr.port)
     }
 
-    pub fn connect<A: Into<Endpoint>>(addr: A) -> SMTPResult<SMTPClient<TcpStream>> {
-        let stream = TcpStream::connect(Self::set_default_port(addr, 25))
-            .map_err(SMTPError::from)?;
-        Self::from_tcp(stream)
-    }
-
-    pub fn connect_timeout<A: Into<Endpoint>>(addr: A, timeout: Duration) -> SMTPResult<SMTPClient<TcpStream>> {
-        let addr = Self::set_default_port(addr, 25)
-            .to_socket_addrs()
-            .map_err(SMTPError::from)?
-            .next()
-            .ok_or(SMTPError::OtherError(format!("Cannot resolve address")))?;
-
-        let stream = TcpStream::connect_timeout(&addr, timeout)
-            .map_err(SMTPError::from)?;
-        Self::from_tcp(stream)
-    }
-
-    pub fn set_timeout(&mut self, timeout: Option<Duration>) -> SMTPResult<&mut Self> {
-        self.0.stream.set_read_timeout(timeout).map_err(SMTPError::from)?;
-        self.0.stream.set_write_timeout(timeout).map_err(SMTPError::from)?;
-        Ok(self)
-    }
-
-    pub fn from_tcp(stream: TcpStream) -> SMTPResult<SMTPClient<TcpStream>> {
-        let inner = SMTPInner::init_from_stream(stream, "localhost")?;
-        Ok(SMTPClient(inner))
-    }
-
     pub fn auth(&mut self, auth: AuthCommand) -> SMTPResult<&mut Self> {
-        let mut auth_ext: Auth<TcpStream> = self.0.new_extension()
-            .ok_or(SMTPError::ExtensionNotSupported(Auth::<TcpStream>::name().to_string()))?;
+        let mut auth_ext: Auth<S> = self.0.new_extension()
+            .ok_or(SMTPError::ExtensionNotSupported(Auth::<S>::name().to_string()))?;
         auth_ext.send_auth(auth)?;
         Ok(self)
     }
@@ -128,6 +167,10 @@ impl SMTPClient<TcpStream> {
         Ok(self)
     }
 }
+
+
+pub type SMTPClientTCP = SMTPClient<TcpStream>;
+pub type SMTPClientTLS = SMTPClient<SslStream<TcpStream>>;
 
 pub struct Endpoint {
     host: String,

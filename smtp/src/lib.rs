@@ -2,6 +2,7 @@
 #![feature(trait_alias)]
 
 extern crate chrono;
+extern crate openssl;
 
 mod command;
 mod utils;
@@ -14,7 +15,7 @@ pub mod mail;
 pub mod mime;
 mod buffer;
 
-pub use crate::smtp::SMTPClient;
+pub use crate::smtp::{SMTPClient, SMTPClientTCP, SMTPClientTLS};
 pub use crate::auth::AuthCommand;
 pub use crate::mime::MIMEBody;
 pub use crate::mail::MailBuilder;

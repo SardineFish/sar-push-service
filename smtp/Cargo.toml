@@ -14,3 +14,7 @@ base64 = "0.13.0"
 bytes = "0.6.0"
 chrono = "0.4.19"
 uuid = { version = "0.8.1", features = [ "v4" ] }
+openssl = { version = "0.10.30"}
+
+[dev-dependencies]
+openssl-probe = "0.1.2"

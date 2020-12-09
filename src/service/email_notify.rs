@@ -1,5 +1,5 @@
 use model::{NotifyProfile, NotifyState, Service};
-use smtp::{mail::MailData, AuthCommand, Error as SMTPError, MIMEBody, MailBuilder, SMTPClient};
+use smtp::{AuthCommand, Error as SMTPError, MIMEBody, MailBuilder, SMTPClient, SMTPClientTCP, SMTPClientTLS, mail::MailData};
 use std::{fmt, sync::mpsc::{channel, Receiver, SendError, Sender}, thread::spawn, time::Duration};
 
 use crate::model::{self, EmailNotify, Model};
@@ -156,10 +156,12 @@ impl PushService {
 
         let result = match service_profile {
             Service::EmailNotify(service_profile) if service_profile.tls => {
-                self.send_notify_tls(&notify, &service_profile)
+                let client = self.connect_tls(&service_profile)?;
+                self.send_notify(&notify, &service_profile, client)
             }
             Service::EmailNotify(service_profile) => {
-                self.send_notify(&notify, &service_profile)
+                let client = self.connect_smtp(&service_profile)?;
+                self.send_notify(&notify, &service_profile, client)
             }
             _ => Err(Error::MissingServiceProfile),
         };
@@ -183,14 +185,9 @@ impl PushService {
         mail
     }
 
-    fn send_notify(&self, notify: &EmailNotify, profile: &NotifyProfile) -> Result<(), Error> {
+    fn send_notify<S: std::io::Read + std::io::Write>(&self, notify: &EmailNotify, profile: &NotifyProfile, mut client: SMTPClient<S>) -> Result<(), Error> {
         let mail = Self::build_mail(&notify, &profile);
-
-        let _client = SMTPClient::connect_timeout(&profile.smtp_address, self.timeout)
-            .map_err(|err| Error::ConnectFailed(err))?
-            .set_timeout(Some(self.timeout))
-            .map_err(|err| Error::ConnectFailed(err))?
-            .auth(AuthCommand::Plain(
+        client.auth(AuthCommand::Plain(
                 None,
                 profile.username.clone(),
                 profile.password.clone(),
@@ -204,7 +201,15 @@ impl PushService {
         Ok(())
     }
 
-    fn send_notify_tls(&self, notify: &EmailNotify, service_profile: &NotifyProfile) -> Result<(), Error> {
-        Ok(())
+    fn connect_smtp(&self, profile: &NotifyProfile) -> Result<SMTPClientTCP, Error> {
+        let client = SMTPClient::connect_timeout(&profile.smtp_address, self.timeout)
+            .map_err(|err| Error::ConnectFailed(err))?;
+        Ok(client)
+    }
+    
+    fn connect_tls(&self, profile: &NotifyProfile) -> Result<SMTPClientTLS, Error> {
+        let client = SMTPClient::connect_tls_timeout(&profile.smtp_address, self.timeout)
+            .map_err(|err| Error::ConnectFailed(err))?;
+        Ok(client)
     }
 }
