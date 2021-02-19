@@ -55,7 +55,7 @@ async fn main() {
     if let Some(url) = matches.value_of("URL") {
         config.url = url;
     } else {
-        config.url = "http://localhost/";
+        config.url = "http://localhost:5000";
     }
 
 
