@@ -1,6 +1,4 @@
-use actix_http::{
-    body::{Body, ResponseBody},
-};
+use actix_http::{body::{Body, ResponseBody}, http::{HeaderValue, header}};
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::{web::Bytes, Result};
 use futures::{future::Ready, task, Future};
@@ -79,7 +77,7 @@ where
         Box::pin(async move {
             let result = future.await?;
             if result.status().is_client_error() || result.status().is_server_error() {
-                let result = result.map_body(|_, body| match body {
+                let mut result = result.map_body(|_, body| match body {
                     ResponseBody::Body(Body::Bytes(bytes)) => {
                         let json = ErrorMessage::from_bytes(bytes).into_json();
                         ResponseBody::Body(Body::Bytes(Bytes::from(json)))
@@ -94,6 +92,7 @@ where
                         ResponseBody::Body(Body::Bytes(Bytes::from(json)))
                     }
                 });
+                result.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
                 Ok(result)
             } else {
                 Ok(result)
